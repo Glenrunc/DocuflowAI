@@ -1,0 +1,54 @@
+from datetime import datetime, timezone
+from uuid import uuid4
+
+from sqlalchemy import Column
+from sqlalchemy.types import JSON
+from sqlmodel import Field, SQLModel
+
+
+def _uuid() -> str:
+    return uuid4().hex
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# status values: queued | processing | done | error
+class Document(SQLModel, table=True):
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    filename: str
+    mime: str
+    stored_path: str
+    doc_type: str | None = None
+    status: str = "queued"
+    error_msg: str | None = None
+    ocr_text: str | None = None
+    page_count: int = 1
+    read_ms: int | None = None
+    is_dup: bool = False
+    dup_of: str | None = None
+    # list[{key,label,icon,kind,value,confidence,bbox?,options?,edited?}]
+    fields: list = Field(default_factory=list, sa_column=Column(JSON))
+    # list[{key,label,ms}] — per-stage timings of the extraction pipeline
+    stages: list = Field(default_factory=list, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=_now)
+
+
+class QAEntry(SQLModel, table=True):
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    doc_id: str = Field(foreign_key="document.id", index=True)
+    question: str
+    answer: str
+    citation: str | None = None
+    created_at: datetime = Field(default_factory=_now)
+
+
+# status values: queued | running | done | error
+class Job(SQLModel, table=True):
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    doc_id: str = Field(foreign_key="document.id", index=True)
+    status: str = "queued"
+    attempts: int = 0
+    created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)

@@ -1,0 +1,86 @@
+# DocuFlow AI — full local stack: postgres + ollama + API + worker + frontend.
+# GPU (NVIDIA) is reserved for `ollama` and `worker` (OCR + LLM run there).
+# No-GPU machines: set OCR_DEVICE=cpu in .env and drop the `deploy.resources`
+# blocks (documented CPU fallback — slower, no other change needed).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-docuflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docuflow}
+      POSTGRES_DB: ${POSTGRES_DB:-docuflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-docuflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docuflow}:${POSTGRES_PASSWORD:-docuflow}@db:5432/${POSTGRES_DB:-docuflow}
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OCR_DEVICE: ${OCR_DEVICE:-cuda}
+    volumes:
+      - storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docuflow}:${POSTGRES_PASSWORD:-docuflow}@db:5432/${POSTGRES_DB:-docuflow}
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OCR_DEVICE: ${OCR_DEVICE:-cuda}
+    volumes:
+      - storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
+  ollama:
+  storage:

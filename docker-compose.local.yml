@@ -1,0 +1,83 @@
+# Local GPU launch. Ollama + docTR run on the NVIDIA GPU.
+# Ollama reuses the host's already-downloaded models (bind mount, no re-pull).
+# The portable/published stack lives in docker-compose.yml.
+name: docuflow
+
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - /usr/share/ollama/.ollama:/root/.ollama
+    <<: *gpu
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-docuflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docuflow}
+      POSTGRES_DB: ${POSTGRES_DB:-docuflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-docuflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docuflow}:${POSTGRES_PASSWORD:-docuflow}@db:5432/${POSTGRES_DB:-docuflow}
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OCR_DEVICE: cpu
+    volumes:
+      - storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docuflow}:${POSTGRES_PASSWORD:-docuflow}@db:5432/${POSTGRES_DB:-docuflow}
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OCR_DEVICE: cuda
+    volumes:
+      - storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    <<: *gpu
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
+  storage:

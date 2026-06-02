@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "groupOrder": ["invoice", "contract", "medical", "report", "id", "other"],
+  "types": {
+    "invoice": {
+      "label": "Invoice",
+      "icon": "📋",
+      "pill": { "bg": "#EEF2FF", "fg": "#4338CA" },
+      "donut": "#4F46E5",
+      "identifying": ["merchant", "total", "date"],
+      "dynamic": false,
+      "fields": [
+        { "key": "date", "label": "Date", "icon": "📅", "kind": "value" },
+        { "key": "merchant", "label": "Merchant", "icon": "🏪", "kind": "value" },
+        { "key": "total", "label": "Total", "icon": "💰", "kind": "value" },
+        { "key": "taxes", "label": "Taxes", "icon": "🧾", "kind": "value" },
+        {
+          "key": "category",
+          "label": "Category",
+          "icon": "🏷",
+          "kind": "category",
+          "options": [
+            { "value": "meals", "label": "Meals", "color": "#F97316" },
+            { "value": "transport", "label": "Transport", "color": "#0EA5E9" },
+            { "value": "office", "label": "Office", "color": "#64748B" },
+            { "value": "travel", "label": "Travel", "color": "#A855F7" },
+            { "value": "accommodation", "label": "Accommodation", "color": "#14B8A6" },
+            { "value": "other", "label": "Other", "color": "#9CA3AF" }
+          ]
+        }
+      ]
+    },
+    "contract": {
+      "label": "Contract",
+      "icon": "📄",
+      "pill": { "bg": "#F5F3FF", "fg": "#6D28D9" },
+      "donut": "#7C3AED",
+      "identifying": ["partyA", "partyB"],
+      "dynamic": false,
+      "fields": [
+        { "key": "partyA", "label": "Party A", "icon": "🏢", "kind": "value" },
+        { "key": "partyB", "label": "Party B", "icon": "🏢", "kind": "value" },
+        { "key": "startDate", "label": "Start Date", "icon": "📅", "kind": "value" },
+        { "key": "endDate", "label": "End Date", "icon": "📅", "kind": "value" },
+        { "key": "value", "label": "Value", "icon": "💰", "kind": "value" },
+        {
+          "key": "contractType",
+          "label": "Type",
+          "icon": "📋",
+          "kind": "category",
+          "options": [
+            { "value": "service", "label": "Service", "color": "#0EA5E9" },
+            { "value": "employment", "label": "Employment", "color": "#4F46E5" },
+            { "value": "nda", "label": "NDA", "color": "#EF4444" },
+            { "value": "lease", "label": "Lease", "color": "#14B8A6" },
+            { "value": "partnership", "label": "Partnership", "color": "#A855F7" },
+            { "value": "other", "label": "Other", "color": "#9CA3AF" }
+          ]
+        }
+      ]
+    },
+    "medical": {
+      "label": "Medical",
+      "icon": "🏥",
+      "pill": { "bg": "#F0FDFA", "fg": "#0F766E" },
+      "donut": "#14B8A6",
+      "identifying": ["patient", "date"],
+      "dynamic": false,
+      "fields": [
+        { "key": "patient", "label": "Patient", "icon": "👤", "kind": "value" },
+        { "key": "doctor", "label": "Doctor", "icon": "🩺", "kind": "value" },
+        { "key": "date", "label": "Date", "icon": "📅", "kind": "value" },
+        { "key": "facility", "label": "Facility", "icon": "🏥", "kind": "value" },
+        { "key": "procedure", "label": "Procedure", "icon": "🔬", "kind": "value" },
+        {
+          "key": "medType",
+          "label": "Type",
+          "icon": "🏷",
+          "kind": "category",
+          "options": [
+            { "value": "prescription", "label": "Prescription", "color": "#4F46E5" },
+            { "value": "lab_result", "label": "Lab Result", "color": "#14B8A6" },
+            { "value": "consultation", "label": "Consultation", "color": "#0EA5E9" },
+            { "value": "referral", "label": "Referral", "color": "#A855F7" },
+            { "value": "other", "label": "Other", "color": "#9CA3AF" }
+          ]
+        }
+      ]
+    },
+    "report": {
+      "label": "Report",
+      "icon": "📊",
+      "pill": { "bg": "#F0F9FF", "fg": "#0369A1" },
+      "donut": "#0EA5E9",
+      "identifying": ["title", "author"],
+      "dynamic": false,
+      "fields": [
+        { "key": "title", "label": "Title", "icon": "📝", "kind": "value" },
+        { "key": "author", "label": "Author", "icon": "✍", "kind": "value" },
+        { "key": "date", "label": "Date", "icon": "📅", "kind": "value" },
+        { "key": "organization", "label": "Organization", "icon": "🏢", "kind": "value" },
+        { "key": "keywords", "label": "Keywords", "icon": "🔑", "kind": "value" }
+      ]
+    },
+    "id": {
+      "label": "ID / Certificate",
+      "icon": "🪪",
+      "pill": { "bg": "#FFFBEB", "fg": "#B45309" },
+      "donut": "#F59E0B",
+      "identifying": ["idNumber", "name"],
+      "dynamic": false,
+      "fields": [
+        { "key": "name", "label": "Name", "icon": "👤", "kind": "value" },
+        { "key": "idNumber", "label": "ID Number", "icon": "🪪", "kind": "value" },
+        { "key": "issueDate", "label": "Issue Date", "icon": "📅", "kind": "value" },
+        { "key": "expiryDate", "label": "Expiry Date", "icon": "📅", "kind": "value" },
+        { "key": "issuer", "label": "Issuer", "icon": "🏢", "kind": "value" }
+      ]
+    },
+    "other": {
+      "label": "Other",
+      "icon": "📁",
+      "pill": { "bg": "#F3F4F6", "fg": "#6B7280" },
+      "donut": "#9CA3AF",
+      "identifying": [],
+      "dynamic": true,
+      "fields": []
+    }
+  },
+  "confidenceLevels": ["high", "med", "low"],
+  "bboxPalette": ["#4F46E5", "#8B5CF6", "#10B981", "#F59E0B", "#0EA5E9"]
+}

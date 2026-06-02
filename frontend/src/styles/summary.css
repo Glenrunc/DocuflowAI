@@ -1,0 +1,161 @@
+.summary {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 40px;
+}
+.summary h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.summary .sub {
+  font-size: 13.5px;
+  color: var(--text-2);
+  margin: 4px 0 24px;
+}
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  position: relative;
+}
+.stat-card .tile {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.stat-card .label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.stat-card .value {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 4px 0 2px;
+}
+.stat-card .csub {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.donut-row {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+}
+.donut-card {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+.donut-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.legend-row .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.legend-row .pct {
+  margin-left: auto;
+  color: var(--text-2);
+}
+.sum-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.sum-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 600;
+  padding: 6px 10px;
+}
+.sum-table td {
+  padding: 9px 10px;
+  border-top: 1px solid var(--border);
+}
+.sum-table tbody tr:hover {
+  background: #fafbfc;
+  cursor: pointer;
+}
+.table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.status-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-inline .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.subsections {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+.sub-card h3 {
+  font-size: 14px;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sub-stat {
+  font-size: 13px;
+  color: var(--text-2);
+  margin: 3px 0;
+}
+.sub-stat b {
+  color: var(--text);
+}
+.cat-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 10px 0 8px;
+}
