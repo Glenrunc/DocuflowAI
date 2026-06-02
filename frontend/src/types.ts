@@ -39,6 +39,8 @@ export interface DocData {
   isDup?: boolean;
   pageCount: number;
   readMs?: number;
+  summary?: string;
+  expiresInDays?: number | null;
   fields: FieldData[];
   stages?: Stage[];
   ocrText?: string;

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime
 
 from .models import Document
 from .schema_def import PLACEHOLDER, get_type
@@ -37,6 +37,88 @@ def parse_money(s: str) -> float | None:
         return float(raw)
     except ValueError:
         return None
+
+
+_FR_MONTHS = {
+    "janv": 1, "févr": 2, "fevr": 2, "mars": 3, "avr": 4, "mai": 5, "juin": 6,
+    "juil": 7, "août": 8, "aout": 8, "sept": 9, "oct": 10, "nov": 11, "déc": 12, "dec": 12,
+}
+
+
+def parse_date(s: str) -> date | None:
+    """Parse FR/ISO dates: '30/06/2026', '2026-11-30', '30 nov. 2026', '1er juin 2026'."""
+    s = (s or "").strip().lower()
+    if not s:
+        return None
+    m = re.search(r"(\d{4})-(\d{1,2})-(\d{1,2})", s)  # ISO
+    if m:
+        y, mo, d = (int(g) for g in m.groups())
+        try:
+            return date(y, mo, d)
+        except ValueError:
+            return None
+    m = re.search(r"(\d{1,2})[/.](\d{1,2})[/.](\d{4})", s)  # dd/mm/yyyy
+    if m:
+        d, mo, y = (int(g) for g in m.groups())
+        try:
+            return date(y, mo, d)
+        except ValueError:
+            return None
+    m = re.search(r"(\d{1,2})(?:er)?\s+([a-zàâäéèêëîïôöùûüç]+)\.?\s+(\d{4})", s)  # 1er juin 2026
+    if m:
+        d, mon, y = m.group(1), m.group(2), m.group(3)
+        for pre, num in _FR_MONTHS.items():
+            if mon.startswith(pre):
+                try:
+                    return date(int(y), num, int(d))
+                except ValueError:
+                    return None
+    return None
+
+
+# (type, field key) pairs that represent a deadline/expiry on a document.
+_EXPIRY_FIELDS = {"contract": "endDate", "id": "expiryDate"}
+
+
+def doc_expiry(doc: Document) -> date | None:
+    key = _EXPIRY_FIELDS.get(doc.doc_type or "")
+    if not key:
+        return None
+    return parse_date(_value(doc.fields or [], key))
+
+
+def expires_in_days(doc: Document, today: date | None = None) -> int | None:
+    d = doc_expiry(doc)
+    if d is None:
+        return None
+    return (d - (today or date.today())).days
+
+
+def deadlines(docs: list[Document], today: date | None = None) -> list[dict]:
+    """Upcoming/expired deadlines across the collection, soonest first."""
+    today = today or date.today()
+    out = []
+    for doc in docs:
+        if doc.status != "done":
+            continue
+        d = doc_expiry(doc)
+        if d is None:
+            continue
+        days = (d - today).days
+        status = "expired" if days < 0 else "soon" if days <= 30 else "ok"
+        out.append(
+            {
+                "id": doc.id,
+                "filename": doc.filename,
+                "type": doc.doc_type,
+                "label": "Fin de contrat" if doc.doc_type == "contract" else "Expiration",
+                "date": d.isoformat(),
+                "daysLeft": days,
+                "status": status,
+            }
+        )
+    out.sort(key=lambda x: x["daysLeft"])
+    return out
 
 
 def conf_avg_label(fields: list[dict]) -> str:
@@ -150,6 +232,7 @@ def build_summary(all_docs: list[Document]) -> dict:
         "dateRange": _date_range(done),
         "rows": rows,
         "subsections": subsections,
+        "deadlines": deadlines(done),
     }
 
 

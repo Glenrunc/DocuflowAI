@@ -176,6 +176,34 @@ def parse_fields(doc_type: str, ocr_text: str) -> dict:
     return {"fields": {}}
 
 
+def summarize_doc(doc_type: str, fields: list[dict], ocr_text: str) -> str:
+    """One concise French sentence summarizing the document (TL;DR shown in the viewer)."""
+    field_summary = {
+        f["key"]: f.get("value")
+        for f in fields
+        if f.get("kind") == "value" and f.get("value") not in (None, "—", "")
+    }
+    system = (
+        "Tu résumes un document administratif en UNE seule phrase courte et factuelle, en "
+        "français. Pas de préambule, pas de liste — juste la phrase."
+    )
+    prompt = (
+        f"Type: {doc_type}.\n"
+        f"Champs extraits: {json.dumps(field_summary, ensure_ascii=False)}\n\n"
+        f"Texte:\n{ocr_text[:2000]}"
+    )
+    try:
+        resp = client().chat(
+            model=settings.ollama_model,
+            keep_alive="30m",
+            options={"temperature": 0, "num_predict": 80},
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+        )
+        return str(resp["message"]["content"]).strip()
+    except Exception:  # noqa: BLE001 — TL;DR is best-effort; never fail the pipeline
+        return ""
+
+
 def answer_question(ocr_text: str, fields: list[dict], question: str) -> dict:
     """Return {"answer": str, "source": str} — source is a verbatim quote from the document."""
     field_summary = {f["key"]: f.get("value") for f in fields if f.get("value") not in (None, "—", "")}

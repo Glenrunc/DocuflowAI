@@ -13,6 +13,7 @@ from ..schema_def import PLACEHOLDER, validate_fields
 from .bbox import derive_bbox
 from .classify import classify_type
 from .duplicate import find_duplicate
+from .llm import summarize_doc
 from .ocr import run_ocr
 from .parse import parse_document_fields
 
@@ -48,10 +49,15 @@ def process_document(session: Session, doc: Document) -> None:
     doc.fields = fields
     extract_ms = int((time.monotonic() - t) * 1000)
 
+    t = time.monotonic()
+    doc.summary = summarize_doc(doc_type, fields, ocr.text)
+    summary_ms = int((time.monotonic() - t) * 1000)
+
     doc.stages = [
         {"key": "ocr", "label": "OCR", "ms": ocr_ms},
         {"key": "classify", "label": "Classify", "ms": classify_ms},
         {"key": "extract", "label": "Extract", "ms": extract_ms},
+        {"key": "summary", "label": "Summary", "ms": summary_ms},
     ]
 
     others = session.exec(

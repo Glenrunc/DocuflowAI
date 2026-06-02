@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from .models import Document, QAEntry
+from .summary_calc import expires_in_days
 
 
 class FieldOut(BaseModel):
@@ -32,12 +33,14 @@ class DocumentSummary(BaseModel):
     status: str
     isDup: bool
     pageCount: int
+    expiresInDays: int | None = None
 
 
 class DocumentDetail(DocumentSummary):
     mime: str
     errorMsg: str | None = None
     readMs: int | None = None
+    summary: str | None = None
     ocrText: str | None = None
     fields: list[FieldOut]
     stages: list[dict]
@@ -72,6 +75,7 @@ def to_summary(doc: Document) -> DocumentSummary:
         status=doc.status,
         isDup=doc.is_dup,
         pageCount=doc.page_count,
+        expiresInDays=expires_in_days(doc),
     )
 
 
@@ -81,6 +85,7 @@ def to_detail(doc: Document, qa: list[QAEntry]) -> DocumentDetail:
         mime=doc.mime,
         errorMsg=doc.error_msg,
         readMs=doc.read_ms,
+        summary=doc.summary,
         ocrText=doc.ocr_text,
         fields=[FieldOut(**f) for f in (doc.fields or [])],
         stages=list(doc.stages or []),

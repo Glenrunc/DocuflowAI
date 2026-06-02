@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy import text
 from sqlmodel import Session, delete, select
 
 from ..config import settings
@@ -63,6 +64,31 @@ async def upload(files: list[UploadFile], session: Session = Depends(get_session
 def list_documents(session: Session = Depends(get_session)):
     docs = session.exec(select(Document).order_by(Document.created_at)).all()
     return [to_summary(d) for d in docs]
+
+
+@router.get("/search", response_model=list[DocumentSummary])
+def search_documents(q: str = "", session: Session = Depends(get_session)):
+    """Full-text search over OCR text + filename. Ranked by ts_rank; ILIKE fallback for
+    short/partial terms that plainto_tsquery can't match."""
+    q = q.strip()
+    if not q:
+        return []
+    fts = text(
+        "SELECT id FROM document "
+        "WHERE to_tsvector('french', coalesce(ocr_text,'') || ' ' || filename) "
+        "@@ plainto_tsquery('french', :q) "
+        "ORDER BY ts_rank(to_tsvector('french', coalesce(ocr_text,'') || ' ' || filename), "
+        "plainto_tsquery('french', :q)) DESC"
+    )
+    ids = [row[0] for row in session.execute(fts, {"q": q}).all()]
+    if not ids:
+        like = text(
+            "SELECT id FROM document WHERE filename ILIKE :p OR ocr_text ILIKE :p "
+            "ORDER BY created_at DESC"
+        )
+        ids = [row[0] for row in session.execute(like, {"p": f"%{q}%"}).all()]
+    docs = {d.id: d for d in session.exec(select(Document).where(Document.id.in_(ids)))}
+    return [to_summary(docs[i]) for i in ids if i in docs]
 
 
 @router.get("/{doc_id}", response_model=DocumentDetail)

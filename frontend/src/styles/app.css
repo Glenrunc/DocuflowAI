@@ -210,6 +210,16 @@
   place-items: center;
   flex-shrink: 0;
 }
+.expiry-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: #F59E0B;
+}
+.expiry-dot.expired {
+  background: #DC2626;
+}
 .doc-del {
   display: inline-flex;
   align-items: center;

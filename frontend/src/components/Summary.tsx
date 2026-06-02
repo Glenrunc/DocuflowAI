@@ -13,12 +13,22 @@ interface Row {
   conf: string;
   status: Status;
 }
+interface Deadline {
+  id: string;
+  filename: string;
+  type: DocType | null;
+  label: string;
+  date: string;
+  daysLeft: number;
+  status: "expired" | "soon" | "ok";
+}
 interface SummaryData {
   totals: { total: number; done: number; pending: number };
   typeCounts: Partial<Record<DocType, number>>;
   dateRange: { label: string; weeks: number };
   rows: Row[];
   subsections: Partial<Record<DocType, Record<string, unknown>>>;
+  deadlines: Deadline[];
 }
 
 const STATUS_COLOR: Record<Status, string> = {
@@ -267,6 +277,31 @@ export function Summary({ onOpen }: { onOpen: (id: string) => void }) {
           </table>
         </div>
       </div>
+
+      {data.deadlines.some((d) => d.status !== "ok") && (
+        <div className="panel-card deadlines-card">
+          <span className="section-label">⏰ Échéances</span>
+          <ul className="deadline-list">
+            {data.deadlines
+              .filter((d) => d.status !== "ok")
+              .map((d) => (
+                <li
+                  key={d.id}
+                  className={`deadline-row ${d.status}`}
+                  onClick={() => onOpen(d.id)}
+                >
+                  <span className="dl-name">{d.filename}</span>
+                  <span className="dl-label">{d.label}</span>
+                  <span className="dl-when">
+                    {d.daysLeft < 0
+                      ? `Expiré (${d.date})`
+                      : `Dans ${d.daysLeft} j (${d.date})`}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
 
       <div className="subsections">
         {present.map((t) => (

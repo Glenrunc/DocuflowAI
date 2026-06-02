@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Status } from "@/types";
-import type { DocSummary } from "@/api/client";
+import { api, type DocSummary } from "@/api/client";
 import { GROUP_ORDER, getType } from "@/schema/types";
 import type { DocType } from "@/schema/types";
 import {
@@ -50,12 +50,26 @@ interface Props {
 
 export function Sidebar({ docs, activeId, collapsed, onToggleCollapse, onSelect, onDelete, onAdd }: Props) {
   const [query, setQuery] = useState("");
+  const [serverDocs, setServerDocs] = useState<DocSummary[] | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DocType>>(new Set());
 
-  const filtered = useMemo(
-    () => docs.filter((d) => d.filename.toLowerCase().includes(query.toLowerCase())),
-    [docs, query],
-  );
+  // ≥2 chars → debounced full-text search (content + filename); else local filename filter.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setServerDocs(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      api.search(q).then(setServerDocs).catch(() => setServerDocs([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const filtered = useMemo(() => {
+    if (query.trim().length >= 2) return serverDocs ?? [];
+    return docs.filter((d) => d.filename.toLowerCase().includes(query.toLowerCase()));
+  }, [docs, query, serverDocs]);
 
   const grouped = useMemo(() => {
     const map = new Map<DocType, DocSummary[]>();
@@ -142,6 +156,16 @@ export function Sidebar({ docs, activeId, collapsed, onToggleCollapse, onSelect,
                     >
                       <IconDoc width={15} height={15} className="doc-icon" />
                       <span className="doc-name">{d.filename}</span>
+                      {d.expiresInDays != null && d.expiresInDays <= 30 && (
+                        <span
+                          className={`expiry-dot${d.expiresInDays < 0 ? " expired" : ""}`}
+                          title={
+                            d.expiresInDays < 0
+                              ? `Expiré il y a ${-d.expiresInDays} j`
+                              : `Expire dans ${d.expiresInDays} j`
+                          }
+                        />
+                      )}
                       <StatusChip status={d.status} />
                       <button
                         className="doc-del"

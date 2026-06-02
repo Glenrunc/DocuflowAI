@@ -8,6 +8,7 @@ export interface DocSummary {
   status: Status;
   isDup: boolean;
   pageCount: number;
+  expiresInDays?: number | null;
 }
 
 async function json<T>(res: Response): Promise<T> {
@@ -20,6 +21,9 @@ async function json<T>(res: Response): Promise<T> {
 
 export const api = {
   list: () => fetch("/api/documents").then(json<DocSummary[]>),
+
+  search: (q: string) =>
+    fetch(`/api/documents/search?q=${encodeURIComponent(q)}`).then(json<DocSummary[]>),
 
   get: (id: string) => fetch(`/api/documents/${id}`).then(json<DocData>),
 

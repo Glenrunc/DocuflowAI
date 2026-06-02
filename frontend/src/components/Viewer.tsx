@@ -132,6 +132,8 @@ export function ViewerLoaded({ doc, showRegions, hot, onHot, onDelete }: LoadedP
         </button>
       </div>
 
+      {doc.summary ? <div className="doc-tldr">📝 {doc.summary}</div> : null}
+
       {doc.stages?.length ? <PipelineBar stages={doc.stages} /> : null}
 
       <div className="paper-wrap">

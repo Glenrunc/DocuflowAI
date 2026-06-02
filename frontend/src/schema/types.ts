@@ -25,6 +25,7 @@ export interface TypeDef {
   pill: { bg: string; fg: string };
   donut: string;
   identifying: string[];
+  suggested?: string[];
   dynamic: boolean;
   fields: FieldDef[];
 }

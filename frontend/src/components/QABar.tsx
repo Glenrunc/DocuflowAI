@@ -15,6 +15,7 @@ interface Props {
   allHistory: QAEntry[];
   streaming: Streaming | null;
   loading: boolean;
+  suggested?: string[];
   onAsk: (question: string, scope: QaScope) => void;
 }
 
@@ -28,12 +29,13 @@ function Thinking({ text, live }: { text: string; live?: boolean }) {
   );
 }
 
-export function QABar({ docHistory, allHistory, streaming, loading, onAsk }: Props) {
+export function QABar({ docHistory, allHistory, streaming, loading, suggested, onAsk }: Props) {
   const [value, setValue] = useState("");
   const [scope, setScope] = useState<QaScope>("doc");
 
   const history = scope === "all" ? allHistory : docHistory;
   const showStream = scope === "all" && streaming;
+  const showChips = scope === "doc" && history.length === 0 && (suggested?.length ?? 0) > 0;
 
   const submit = () => {
     const q = value.trim();
@@ -66,6 +68,16 @@ export function QABar({ docHistory, allHistory, streaming, loading, onAsk }: Pro
             </>
           )}
           {loading && scope === "doc" && <div className="qa-a">Looking…</div>}
+        </div>
+      )}
+
+      {showChips && (
+        <div className="qa-chips">
+          {suggested!.map((s) => (
+            <button key={s} onClick={() => onAsk(s, "doc")}>
+              {s}
+            </button>
+          ))}
         </div>
       )}
 

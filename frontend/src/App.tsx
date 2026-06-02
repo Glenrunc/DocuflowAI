@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { DocData, QAEntry } from "@/types";
-import type { DocType } from "@/schema/types";
+import { getType, type DocType } from "@/schema/types";
 import { api, type DocSummary } from "@/api/client";
 import { Topbar, type Tab } from "@/components/Topbar";
 import { Sidebar } from "@/components/Sidebar";
@@ -165,6 +165,7 @@ export default function App() {
         allHistory={globalQa}
         streaming={streaming}
         loading={qaLoading}
+        suggested={activeDoc?.type ? getType(activeDoc.type).suggested : undefined}
         onAsk={(q, scope) => {
           if (scope === "all") {
             setQaLoading(true);
