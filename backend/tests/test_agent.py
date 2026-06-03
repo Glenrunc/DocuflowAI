@@ -2,7 +2,7 @@
 
 from unittest.mock import patch, MagicMock
 
-from app.pipeline.agent import _parse_action, _build_stats, _tool_aggregate
+from app.pipeline.agent import _parse_action, _build_stats, _tool_aggregate, _schema_hint
 from app.models import Document
 
 
@@ -53,7 +53,44 @@ def test_tool_aggregate(session):
     result = _tool_aggregate(session, {"type": "invoice", "field": "total", "op": "count"})
     assert "1" in result
 
+    # the model often passes the human label ('Total') instead of the key ('total')
+    result = _tool_aggregate(session, {"type": "invoice", "field": "Total", "op": "sum"})
+    assert "100.50" in result
+
+    # ...or invents a synonym like 'amount' — resolved via alias to 'total'
+    result = _tool_aggregate(session, {"type": "invoice", "field": "amount", "op": "sum"})
+    assert "100.50" in result
+
+
+def test_schema_hint_lists_invoice_total():
+    hint = _schema_hint()
+    assert "invoice" in hint and "total" in hint
+
 
 def test_tool_aggregate_no_docs(session):
     result = _tool_aggregate(session, {"type": "contract", "field": "value", "op": "sum"})
     assert "No" in result
+
+
+def test_run_agent_calls_tool_then_streams_answer(session, monkeypatch):
+    from app.pipeline import agent
+
+    # Step 1: pick a tool. Step 2: signal 'answer' → final streamed generation.
+    actions = iter([
+        {"message": {"content": '{"thought": "lister", "action": "filter", "params": {"type": "invoice"}}'}},
+        {"message": {"content": '{"thought": "fini", "action": "answer", "params": {}}'}},
+    ])
+
+    class FakeClient:
+        def chat(self, *, stream=False, **kwargs):
+            if stream:
+                return [{"message": {"content": "Voici la réponse finale."}}]
+            return next(actions)
+
+    monkeypatch.setattr(agent, "client", lambda: FakeClient())
+    monkeypatch.setattr(agent, "_tool_filter", lambda s, p: "1 document(s) found")
+
+    events = list(agent.run_agent(session, "Combien de factures ?"))
+    assert "tool" in [e["type"] for e in events]
+    answer = "".join(e["text"] for e in events if e["type"] == "answer")
+    assert answer == "Voici la réponse finale."

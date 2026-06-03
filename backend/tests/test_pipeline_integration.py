@@ -38,6 +38,7 @@ def _patch_pipeline(monkeypatch):
     monkeypatch.setattr(run_mod, "run_ocr", _fake_ocr)
     monkeypatch.setattr(run_mod, "classify_type", lambda _t: "invoice")
     monkeypatch.setattr(run_mod, "parse_document_fields", _fake_parse)
+    monkeypatch.setattr(run_mod, "embed_document", lambda *_a, **_k: None)
 
 
 def _new_doc(session) -> Document:

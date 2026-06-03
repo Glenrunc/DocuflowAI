@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import re
-import time
 
 from ollama import Client
 
@@ -34,84 +33,6 @@ def _chat_json(prompt: str, system: str, num_predict: int = 256) -> dict:
     )
     content = resp["message"]["content"]
     return json.loads(content)
-
-
-def answer_corpus(question: str, corpus: str) -> str:
-    """Answer a free-form question over the whole document collection (prose, not JSON)."""
-    system = (
-        "You answer questions about a COLLECTION of administrative documents, using ONLY the "
-        "provided digest (per-document extracted fields and aggregate stats). Be concise and "
-        "factual. If the digest doesn't contain the information, say so. Answer in the same "
-        "language as the question."
-    )
-    resp = client().chat(
-        model=settings.ollama_model,
-        keep_alive="30m",
-        options={"temperature": 0, "num_predict": 512},
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": f"Document digest:\n{corpus}\n\nQuestion: {question}"},
-        ],
-    )
-    return str(resp["message"]["content"]).strip()
-
-
-_QA_PERSONA = (
-    "Tu es l'assistant de DocuFlow, une application qui extrait et organise des documents "
-    "administratifs (factures, contrats, documents médicaux, rapports, pièces d'identité). "
-    "Tu réponds aux questions de l'utilisateur sur SA collection de documents en te basant "
-    "UNIQUEMENT sur le digest fourni (champs extraits par document + statistiques agrégées). "
-    "Si l'information n'y figure pas, dis-le. Réfléchis BRIÈVEMENT, puis réponds de façon "
-    "concise et factuelle, dans la langue de la question."
-)
-
-
-THINK_BUDGET_S = 6.0  # how long to let the reasoning model "think out loud" before answering
-
-
-def stream_corpus(question: str, corpus: str):
-    """Stream the global Q&A: yields {'type': 'thinking'|'answer', 'text': <delta>} chunks.
-
-    Phase 1: the reasoning model (qa_model) thinks out loud, streamed live, for up to
-    THINK_BUDGET_S seconds. Phase 2: the fast model writes the actual answer — qwen3's
-    reasoning is unbounded/verbose, so a hard token cap starved the answer; this time-boxes
-    the thinking and guarantees a clean, concise answer."""
-    user = {"role": "user", "content": f"Digest des documents:\n{corpus}\n\nQuestion: {question}"}
-
-    t0 = time.monotonic()
-    answered = False
-    stream = client().chat(
-        model=settings.ollama_qa_model,
-        think=True,
-        stream=True,
-        keep_alive="10m",
-        options={"temperature": 0, "num_predict": 4096},
-        messages=[{"role": "system", "content": _QA_PERSONA}, user],
-    )
-    for chunk in stream:
-        msg = chunk.message
-        if msg.thinking:
-            yield {"type": "thinking", "text": msg.thinking}
-            if time.monotonic() - t0 > THINK_BUDGET_S:
-                stream.close()
-                break
-        if msg.content:
-            answered = True
-            yield {"type": "answer", "text": msg.content}
-
-    if answered:
-        return  # the reasoning model finished thinking and answered within the budget
-
-    # Time-boxed out: produce a clean concise answer with the fast (non-thinking) model.
-    for chunk in client().chat(
-        model=settings.ollama_model,
-        stream=True,
-        keep_alive="30m",
-        options={"temperature": 0, "num_predict": 512},
-        messages=[{"role": "system", "content": _QA_PERSONA}, user],
-    ):
-        if chunk.message.content:
-            yield {"type": "answer", "text": chunk.message.content}
 
 
 def warmup() -> None:

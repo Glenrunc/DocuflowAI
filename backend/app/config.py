@@ -12,8 +12,6 @@ class Settings(BaseSettings):
 
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b"
-    # Reasoning model used only for the global (cross-document) Q&A, which streams its thinking.
-    ollama_qa_model: str = "qwen3:4b"
     # Embedding model for the agentic RAG vector store.
     ollama_embed_model: str = "nomic-embed-text"
     embedding_dim: int = 768
@@ -26,7 +24,7 @@ class Settings(BaseSettings):
 
     worker_poll_interval: float = 1.0
     duplicate_threshold: float = 0.85
-    agent_max_steps: int = 6
+    agent_max_steps: int = 4
     agent_top_k: int = 5
 
 

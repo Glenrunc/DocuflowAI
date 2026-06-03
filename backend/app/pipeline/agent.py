@@ -10,14 +10,13 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 from collections import Counter
 
 from sqlmodel import Session, select
 
 from ..config import settings
 from ..models import Chunk, Document
-from ..schema_def import PLACEHOLDER
+from ..schema_def import PLACEHOLDER, doc_types, get_type
 from ..summary_calc import parse_money
 from .embed import cosine_similarity, embed_query
 from .llm import client
@@ -27,8 +26,8 @@ logger = logging.getLogger(__name__)
 _TOOL_DEFS = [
     {
         "name": "search",
-        "description": "Semantic vector search across all documents. Returns the most relevant text chunks.",
-        "params": {"query": "string — the search query"},
+        "description": "Semantic vector search across all documents (natural-language query, NOT a key:value filter). Returns the most relevant text chunks.",
+        "params": {"query": "string — a natural-language search query"},
     },
     {
         "name": "filter",
@@ -43,7 +42,7 @@ _TOOL_DEFS = [
     {
         "name": "aggregate",
         "description": "Compute sum, average, count, or min/max on a numeric field across documents of a given type.",
-        "params": {"type": "string — document type", "field": "string — field key", "op": "string — one of: sum, avg, count, min, max"},
+        "params": {"type": "string — document type", "field": "string — the EXACT field key (e.g. total, taxes), not a free label", "op": "string — one of: sum, avg, count, min, max"},
     },
     {
         "name": "answer",
@@ -69,11 +68,29 @@ _SYSTEM = (
     "1. Réfléchis d'abord à ce dont tu as besoin, puis appelle UN outil.\n"
     "2. Réponds UNIQUEMENT avec du JSON valide: "
     '   {{"thought": "ton raisonnement", "action": "nom_outil", "params": {{...}}}}\n'
-    "3. Quand tu as assez d'info, utilise l'outil 'answer' avec le texte final.\n"
+    "3. Dès que tu as assez d'info, choisis l'action 'answer' (params vide) — la réponse "
+    "finale sera rédigée ensuite, n'écris pas le texte ici.\n"
     "4. Sois concis et factuel. Réponds dans la langue de la question.\n"
-    "5. Si tu ne trouves pas l'info, dis-le honnêtement via 'answer'.\n"
+    "5. Si tu ne trouves pas l'info, choisis quand même 'answer'.\n"
     "6. Maximum {max_steps} étapes — ne tourne pas en boucle."
 )
+
+
+# Synonyms the model tends to invent → canonical field key.
+_FIELD_ALIASES = {
+    "amount": "total", "montant": "total", "somme": "total", "prix": "total",
+    "price": "total", "spend": "total", "cost": "total", "sum": "total",
+}
+
+
+def _schema_hint() -> str:
+    """Per-type field keys so the agent uses real keys (e.g. 'total') instead of guessing."""
+    lines = []
+    for t in doc_types():
+        keys = ", ".join(f.key for f in get_type(t).fields)
+        if keys:
+            lines.append(f"  {t}: {keys}")
+    return "Champs disponibles par type (utilise EXACTEMENT ces clés pour aggregate/detail):\n" + "\n".join(lines)
 
 
 def _format_doc_summary(doc: Document) -> str:
@@ -186,10 +203,12 @@ def _tool_aggregate(session: Session, params: dict) -> str:
     if not docs:
         return f"No '{doc_type}' documents found."
 
+    target = _FIELD_ALIASES.get(field_key.strip().lower(), field_key.strip().lower())
     values: list[float] = []
     for d in docs:
         for f in (d.fields or []):
-            if f.get("key") == field_key:
+            # the model may pass the field key ('total'), its label ('Total'), or a synonym
+            if target in (str(f.get("key", "")).lower(), str(f.get("label", "")).lower()):
                 v = parse_money(f.get("value", ""))
                 if v is not None:
                     values.append(v)
@@ -241,6 +260,28 @@ def _parse_action(text: str) -> dict | None:
         return None
 
 
+_ANSWER_PROMPT = (
+    "Tu as assez d'information. Rédige MAINTENANT la réponse finale pour l'utilisateur, "
+    "en te basant sur les observations ci-dessus. Concise, factuelle, dans la langue de la "
+    "question. Ne renvoie PAS de JSON, juste la réponse."
+)
+
+
+def _stream_answer(messages: list[dict]):
+    """One final, streamed generation on the fast model — gives an immediate response feel."""
+    msgs = messages + [{"role": "user", "content": _ANSWER_PROMPT}]
+    for chunk in client().chat(
+        model=settings.ollama_model,
+        stream=True,
+        keep_alive="30m",
+        options={"temperature": 0, "num_predict": 512},
+        messages=msgs,
+    ):
+        content = chunk["message"]["content"]
+        if content:
+            yield {"type": "answer", "text": content}
+
+
 def run_agent(session: Session, question: str):
     """Generator that yields streaming events as the agent reasons and acts.
 
@@ -253,6 +294,7 @@ def run_agent(session: Session, question: str):
         {"role": "system", "content": system},
         {"role": "user", "content": (
             f"Contexte de la collection:\n{collection_stats}\n\n"
+            f"{_schema_hint()}\n\n"
             f"Question de l'utilisateur: {question}"
         )},
     ]
@@ -260,9 +302,10 @@ def run_agent(session: Session, question: str):
     for step in range(settings.agent_max_steps):
         try:
             resp = client().chat(
-                model=settings.ollama_qa_model,
-                keep_alive="10m",
-                options={"temperature": 0, "num_predict": 512},
+                model=settings.ollama_model,
+                format="json",
+                keep_alive="30m",
+                options={"temperature": 0, "num_predict": 192},
                 messages=messages,
             )
             raw = resp["message"]["content"]
@@ -273,7 +316,6 @@ def run_agent(session: Session, question: str):
 
         action = _parse_action(raw)
         if action is None:
-            yield {"type": "thinking", "text": raw}
             yield {"type": "answer", "text": raw}
             return
 
@@ -285,7 +327,7 @@ def run_agent(session: Session, question: str):
             yield {"type": "thinking", "text": thought}
 
         if action_name == "answer":
-            yield {"type": "answer", "text": params.get("text", raw)}
+            yield from _stream_answer(messages)
             return
 
         tool_fn = _TOOLS.get(action_name)
@@ -302,7 +344,7 @@ def run_agent(session: Session, question: str):
         messages.append({"role": "assistant", "content": raw})
         messages.append({"role": "user", "content": f"Observation:\n{observation}"})
 
-    yield {"type": "answer", "text": "J'ai atteint la limite d'étapes. Voici ce que j'ai trouvé jusqu'ici."}
+    yield from _stream_answer(messages)  # step budget exhausted — answer from what we have
 
 
 def _build_stats(session: Session) -> str:

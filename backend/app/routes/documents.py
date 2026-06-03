@@ -11,7 +11,7 @@ from sqlmodel import Session, delete, select
 
 from ..config import settings
 from ..db import get_session
-from ..models import Document, Job, QAEntry
+from ..models import Chunk, Document, Job, QAEntry
 from ..schema_def import PLACEHOLDER, get_type, validate_fields
 from ..storage_tree import place
 from ..schemas_api import (
@@ -108,6 +108,7 @@ def delete_document(doc_id: str, session: Session = Depends(get_session)):
     (settings.storage_dir / f"{doc.id}_p1.png").unlink(missing_ok=True)
     session.exec(delete(QAEntry).where(QAEntry.doc_id == doc_id))
     session.exec(delete(Job).where(Job.doc_id == doc_id))
+    session.exec(delete(Chunk).where(Chunk.doc_id == doc_id))
     session.delete(doc)
     session.commit()
 
