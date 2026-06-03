@@ -101,6 +101,7 @@ export const api = {
         if (!line) continue;
         const msg = JSON.parse(line) as { type: string; text?: string; citation?: string | null };
         if (msg.type === "thinking") cb.onThinking(msg.text ?? "");
+        else if (msg.type === "tool") cb.onThinking("\n" + (msg.text ?? "") + "\n");
         else if (msg.type === "answer") cb.onAnswer(msg.text ?? "");
         else if (msg.type === "done") cb.onDone(msg.citation ?? null);
       }

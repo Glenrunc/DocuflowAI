@@ -14,8 +14,9 @@ calls, no secrets baked into the images.
 |---|---|---|
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLModel | docTR/Ollama are Python; strict typing |
 | OCR | docTR (GPU, CPU fallback) | imposed; word-level geometry → field bboxes |
-| LLM | Ollama `qwen2.5:3b` (pipeline) + `qwen3:4b` (QA thinking) | local; fit 6 GB VRAM alongside docTR |
-| DB | Postgres (JSONB) | metadata + extracted fields/bboxes/OCR text |
+| LLM | Ollama `qwen2.5:3b` (pipeline) + `qwen3:4b` (QA agent) | local; fit 6 GB VRAM alongside docTR |
+| Embeddings | Ollama `nomic-embed-text` (768d) | chunked OCR text, stored in `chunk` table |
+| DB | Postgres (JSONB) | metadata + extracted fields/bboxes/OCR text/embeddings |
 | Queue | `jobs` table + 1 worker (`FOR UPDATE SKIP LOCKED`) | serializes the GPU; durable; no Redis |
 | Frontend | React + TS + Vite, CSS variables | design tokens; no heavy UI framework |
 
@@ -27,20 +28,24 @@ medical, report, id, other.
 
 ```
 queued → processing → OCR (docTR) → classify type (Ollama) → parse fields (Ollama, strict JSON)
-       → validate against schema → derive bbox (match value ↔ docTR words) → duplicate check → done
+       → validate against schema → derive bbox (match value ↔ docTR words) → duplicate check
+       → embed chunks (nomic-embed-text) → done
 ```
 
 Bounding boxes are **derived server-side** by matching each extracted value against docTR
 word geometry (rapidfuzz) — never guessed by the LLM. Duplicate detection compares the
 type's *identifying* fields (normalized fuzzy similarity), not embeddings.
 
-### QA — two scopes (no vector store, no embeddings)
+### QA — two scopes
 
 - **Single document**: the active doc's OCR text + extracted fields are stuffed into
   `qwen2.5:3b`. The cited snippet is located back in the OCR text → `Found on line N: "…"`.
-- **Whole collection**: a compact **structured digest** (per-doc key fields + aggregates,
-  reusing the Summary aggregation) is fed to `qwen3:4b`, which **streams its thinking live**
-  (NDJSON, time-boxed) before the answer. No raw-OCR stuffing, so it scales to many docs.
+- **Whole collection (Agentic RAG)**: a ReAct-style agent loop powered by `qwen3:4b`.
+  Documents are chunked and embedded at processing time (`nomic-embed-text` via Ollama,
+  stored as JSON vectors in a `chunk` table). The agent has **4 tools**: `search` (vector
+  similarity), `filter` (type/keyword), `detail` (full doc), `aggregate` (sum/avg/count
+  on numeric fields). It reasons step-by-step (streamed live as NDJSON) and decides when
+  it has enough information to answer. Scales beyond the context-stuffing limit of ~200 docs.
 
 PDFs are displayed as a **server-rendered page image** (same raster docTR used), so the
 field bounding-box overlay aligns exactly — the browser's native PDF viewer is not used.
@@ -52,8 +57,9 @@ Requires Docker + the **NVIDIA Container Toolkit** for GPU.
 ```bash
 cp .env.example .env          # adjust if needed; no secrets required
 docker compose up --build     # starts db, ollama, backend, worker, frontend
-docker compose exec ollama ollama pull qwen2.5:3b   # pipeline model (one-time)
-docker compose exec ollama ollama pull qwen3:4b     # collection-QA thinking model (one-time)
+docker compose exec ollama ollama pull qwen2.5:3b      # pipeline model (one-time)
+docker compose exec ollama ollama pull qwen3:4b        # collection-QA agent model (one-time)
+docker compose exec ollama ollama pull nomic-embed-text # RAG embedding model (one-time)
 ```
 
 > On a local GPU machine, use `docker compose -f docker-compose.local.yml up --build` —
@@ -89,7 +95,7 @@ uvicorn app.main:app --reload     # API on :8000
 python -m app.worker              # worker, separate terminal
 ```
 
-Pull the models once: `ollama pull qwen2.5:3b && ollama pull qwen3:4b`.
+Pull the models once: `ollama pull qwen2.5:3b && ollama pull qwen3:4b && ollama pull nomic-embed-text`.
 
 **Frontend:**
 
@@ -108,7 +114,8 @@ All settings come from environment variables (see `backend/app/config.py` / `.en
 | `DATABASE_URL` | local Postgres | `postgresql+psycopg://…` |
 | `OLLAMA_HOST` | `http://localhost:11434` | |
 | `OLLAMA_MODEL` | `qwen2.5:3b` | pipeline (classify/parse) + single-doc QA |
-| `OLLAMA_QA_MODEL` | `qwen3:4b` | collection QA; reasoning/thinking model |
+| `OLLAMA_QA_MODEL` | `qwen3:4b` | collection QA; agentic RAG reasoning model |
+| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | embedding model for RAG vector store |
 | `OCR_DEVICE` | `cuda` | `cpu` = degraded fallback |
 | `DUPLICATE_THRESHOLD` | `0.85` | similarity cutoff |
 

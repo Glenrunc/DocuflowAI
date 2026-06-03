@@ -41,6 +41,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docuflow}:${POSTGRES_PASSWORD:-docuflow}@db:5432/${POSTGRES_DB:-docuflow}
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OCR_DEVICE: cpu
     volumes:
       - ./backend/storage:/app/storage
@@ -59,6 +60,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docuflow}:${POSTGRES_PASSWORD:-docuflow}@db:5432/${POSTGRES_DB:-docuflow}
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OCR_DEVICE: cuda
     volumes:
       - ./backend/storage:/app/storage

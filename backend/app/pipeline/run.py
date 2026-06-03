@@ -17,6 +17,7 @@ from .backstop import apply_backstops
 from .bbox import derive_bbox
 from .classify import classify_type
 from .duplicate import find_duplicate
+from .embed import embed_document
 from .llm import summarize_doc
 from .ocr import run_ocr
 from .parse import parse_document_fields
@@ -81,6 +82,11 @@ def process_document(session: Session, doc: Document) -> None:
     doc.dup_of = dup_of
 
     place(doc)  # move the file into <Type>/<Category>/ on disk
+
+    t = time.monotonic()
+    embed_document(session, doc)
+    embed_ms = int((time.monotonic() - t) * 1000)
+    doc.stages.append({"key": "embed", "label": "Embed", "ms": embed_ms})
 
     doc.read_ms = int((time.monotonic() - start) * 1000)
     doc.status = "done"

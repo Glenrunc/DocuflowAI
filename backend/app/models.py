@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Column
+from sqlalchemy import Column, Index
 from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
@@ -42,6 +42,16 @@ class QAEntry(SQLModel, table=True):
     question: str
     answer: str
     citation: str | None = None
+    created_at: datetime = Field(default_factory=_now)
+
+
+class Chunk(SQLModel, table=True):
+    """A text chunk of a document with its embedding vector for RAG retrieval."""
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    doc_id: str = Field(foreign_key="document.id", index=True)
+    page: int = 0
+    content: str
+    embedding: list = Field(default_factory=list, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=_now)
 
 
