@@ -25,7 +25,7 @@ def _fake_ocr(*_args, **_kwargs):
     )
 
 
-def _fake_parse(_doc_type, _ocr_text):
+def _fake_parse(_doc_type, _ocr_text, _category_choices=None):
     return {
         "merchant": {"value": "Café Urbain", "confidence": "high"},
         "total": {"value": "$47.85", "confidence": "high"},

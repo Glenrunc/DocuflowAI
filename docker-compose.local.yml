@@ -43,7 +43,7 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
       OCR_DEVICE: cpu
     volumes:
-      - storage:/app/storage
+      - ./backend/storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
       OCR_DEVICE: cuda
     volumes:
-      - storage:/app/storage
+      - ./backend/storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
@@ -80,4 +80,3 @@ services:
 
 volumes:
   pgdata:
-  storage:

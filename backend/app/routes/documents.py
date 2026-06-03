@@ -13,6 +13,7 @@ from ..config import settings
 from ..db import get_session
 from ..models import Document, Job, QAEntry
 from ..schema_def import PLACEHOLDER, get_type, validate_fields
+from ..storage_tree import place
 from ..schemas_api import (
     ChangeTypeIn,
     DocumentDetail,
@@ -159,6 +160,7 @@ def change_type(doc_id: str, body: ChangeTypeIn, session: Session = Depends(get_
     doc.doc_type = body.type
     doc.fields = _default_fields(body.type)
     doc.is_dup = False
+    place(doc)
     session.add(doc)
     session.commit()
     session.refresh(doc)
@@ -194,6 +196,7 @@ def set_category(doc_id: str, body: SetCategoryIn, session: Session = Depends(ge
         if f.get("kind") == "category":
             f["value"] = body.value
     doc.fields = fields
+    place(doc)
     session.add(doc)
     session.commit()
     qa = session.exec(select(QAEntry).where(QAEntry.doc_id == doc_id)).all()

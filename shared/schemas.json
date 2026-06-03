@@ -4,6 +4,8 @@
   "types": {
     "invoice": {
       "label": "Invoice",
+      "description": "A bill, receipt, till slip or point-of-sale sales document listing items, prices, taxes and an amount due or paid.",
+      "signals": ["invoice", "receipt", "total", "subtotal", "tax", "gst", "amount", "rm", "cashier", "change", "qty", "price", "paid", "due"],
       "icon": "📋",
       "pill": { "bg": "#EEF2FF", "fg": "#4338CA" },
       "donut": "#4F46E5",
@@ -11,10 +13,10 @@
       "suggested": ["Quel est le montant total ?", "Quelle est la date ?", "Qui est le fournisseur ?"],
       "dynamic": false,
       "fields": [
-        { "key": "date", "label": "Date", "icon": "📅", "kind": "value" },
-        { "key": "merchant", "label": "Merchant", "icon": "🏪", "kind": "value" },
-        { "key": "total", "label": "Total", "icon": "💰", "kind": "value" },
-        { "key": "taxes", "label": "Taxes", "icon": "🧾", "kind": "value" },
+        { "key": "date", "label": "Date", "icon": "📅", "kind": "value", "hint": "Transaction or invoice date; formats like 18-11-18 or 2018-11-18." },
+        { "key": "merchant", "label": "Merchant", "icon": "🏪", "kind": "value", "hint": "Registered business name (e.g. MR D.I.Y. (M) SDN BHD), NOT a slogan or handwriting." },
+        { "key": "total", "label": "Total", "icon": "💰", "kind": "value", "hint": "Final amount payable: Grand Total / Total / Amount Due / Total Inclusive — not subtotal or change." },
+        { "key": "taxes", "label": "Taxes", "icon": "🧾", "kind": "value", "hint": "Tax amount: GST / SST / Tax / Service Charge, if present." },
         {
           "key": "category",
           "label": "Category",
@@ -33,6 +35,8 @@
     },
     "contract": {
       "label": "Contract",
+      "description": "A legal agreement between parties stating terms, clauses, obligations and signatures (service, employment, NDA, lease...).",
+      "signals": ["agreement", "contract", "party", "parties", "hereby", "terms", "clause", "signed", "obligations", "lease", "nda", "whereas"],
       "icon": "📄",
       "pill": { "bg": "#F5F3FF", "fg": "#6D28D9" },
       "donut": "#7C3AED",
@@ -63,6 +67,8 @@
     },
     "medical": {
       "label": "Medical",
+      "description": "A healthcare document: prescription, lab result, consultation note or referral, naming a patient and a clinician.",
+      "signals": ["patient", "diagnosis", "prescription", "doctor", "dr", "clinic", "hospital", "lab", "dosage", "mg", "ml", "symptoms"],
       "icon": "🏥",
       "pill": { "bg": "#F0FDFA", "fg": "#0F766E" },
       "donut": "#14B8A6",
@@ -92,6 +98,8 @@
     },
     "report": {
       "label": "Report",
+      "description": "An analytical or informational document with a title, author and narrative sections (findings, analysis, conclusion).",
+      "signals": ["report", "summary", "analysis", "findings", "conclusion", "author", "figure", "section", "introduction", "abstract"],
       "icon": "📊",
       "pill": { "bg": "#F0F9FF", "fg": "#0369A1" },
       "donut": "#0EA5E9",
@@ -108,6 +116,8 @@
     },
     "id": {
       "label": "ID / Certificate",
+      "description": "An identity document or certificate: passport, driving licence, national ID or certificate, with a holder name and a number.",
+      "signals": ["passport", "identity", "identification", "licence", "license", "certificate", "date of birth", "expiry", "national id", "issued"],
       "icon": "🪪",
       "pill": { "bg": "#FFFBEB", "fg": "#B45309" },
       "donut": "#F59E0B",
@@ -124,6 +134,8 @@
     },
     "other": {
       "label": "Other",
+      "description": "Use only when the document clearly matches none of the above types.",
+      "signals": [],
       "icon": "📁",
       "pill": { "bg": "#F3F4F6", "fg": "#6B7280" },
       "donut": "#9CA3AF",

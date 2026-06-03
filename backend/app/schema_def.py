@@ -31,6 +31,7 @@ class FieldDef(BaseModel):
     label: str
     icon: str
     kind: FieldKind
+    hint: str = ""
     options: list[CategoryOption] | None = None
 
 
@@ -41,6 +42,8 @@ class PillColors(BaseModel):
 
 class TypeDef(BaseModel):
     label: str
+    description: str = ""
+    signals: list[str] = []
     icon: str
     pill: PillColors
     donut: str
