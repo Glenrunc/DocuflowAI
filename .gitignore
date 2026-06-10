@@ -17,3 +17,5 @@ backend/storage/
 
 # OS
 .DS_Store
+
+/livrables
