@@ -4,7 +4,7 @@
 # blocks (documented CPU fallback — slower, no other change needed).
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-docuflow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docuflow}
