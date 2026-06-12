@@ -1,0 +1,19 @@
+RAPPORT ANNUEL 2025
+Gestion documentaire et transformation numerique
+Auteur: Direction des operations
+Organisation: Cooperative Regionale du Saguenay
+Date: 2026-05-15
+RESUME / ABSTRACT
+Ce rapport presente un summary des activites de gestion
+documentaire de la cooperative pour l'exercice 2025.
+1. INTRODUCTION
+Le volume de documents administratifs traites a augmente de
+18% par rapport a 2024, principalement des factures et des
+contrats de service.
+2. ANALYSIS / FINDINGS
+L'analyse montre que 62% du temps de traitement est consacre
+a la saisie manuelle des champs cles. Les findings indiquent
+un fort potentiel d'automatisation par extraction assistee.
+3. CONCLUSION
+La cooperative recommande le deploiement d'un outil local
+d'extraction de documents en 2026 (section budget, figure 4).

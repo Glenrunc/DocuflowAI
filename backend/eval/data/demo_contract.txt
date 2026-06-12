@@ -1,0 +1,27 @@
+SERVICE AGREEMENT
+Contrat de services
+This Service Agreement ("Agreement") is entered into as of
+June 1, 2026, by and between:
+Party A: Nordix Solutions Inc., 234 rue Racine Est,
+Chicoutimi (Quebec) G7H 1S8 ("Client")
+Party B: DocuFlow Conseil S.E.N.C., 555 boul. de l'Universite,
+Saguenay (Quebec) G7H 2B1 ("Provider")
+WHEREAS the Client wishes to retain the Provider for document
+digitization and archiving services, the parties hereby agree
+to the following terms:
+1. Term. This Agreement begins on 2026-06-01 and ends on
+   2027-05-31, unless terminated earlier under clause 6.
+2. Services. The Provider shall digitize, index and archive
+   the Client's administrative documents.
+3. Compensation. The Client shall pay the Provider a total
+   value of CA$ 24,000 in twelve monthly instalments.
+4. Confidentiality. Each party shall keep all documents and
+   data strictly confidential.
+5. Obligations. The Provider shall meet the service levels
+   described in Schedule A.
+6. Termination. Either party may terminate this Agreement
+   with 30 days written notice.
+Signed in Saguenay, Quebec, on June 1, 2026.
+__________________________    __________________________
+Nordix Solutions Inc.         DocuFlow Conseil S.E.N.C.
+(Party A)                     (Party B)

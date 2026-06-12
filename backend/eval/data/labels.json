@@ -1,0 +1,334 @@
+{
+ "sroie_000.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "BOOK TA .K (TAMAN DAYA) SDN BHD",
+   "date": "25/12/2018",
+   "total": "9.00"
+  }
+ },
+ "sroie_001.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "INDAH GIFT & HOME DECO",
+   "date": "19/10/2018",
+   "total": "60.30"
+  }
+ },
+ "sroie_002.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "MR D.I.Y. (JOHOR) SDN BHD",
+   "date": "12-01-19",
+   "total": "33.90"
+  }
+ },
+ "sroie_003.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "YONGFATT ENTERPRISE",
+   "date": "25/12/2018",
+   "total": "80.90"
+  }
+ },
+ "sroie_004.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "MR D.I.Y. (M) SDN BHD",
+   "date": "18-11-18",
+   "total": "30.90"
+  }
+ },
+ "sroie_005.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "ABC HO TRADING",
+   "date": "09/01/2019",
+   "total": "31.00"
+  }
+ },
+ "sroie_006.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "SOON HUAT MACHINERY ENTERPRISE",
+   "date": "11/01/2019",
+   "total": "327.00"
+  }
+ },
+ "sroie_007.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "S.H.H. MOTOR (SUNGAI RENGIT) SDN. BHD.",
+   "date": "23-01-2019",
+   "total": "20.00"
+  }
+ },
+ "sroie_008.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "PERNIAGAAN ZHENG HUI",
+   "date": "12/02/2018",
+   "total": "112.45"
+  }
+ },
+ "sroie_009.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "GERBANG ALAF RESTAURANTS SDN BHD",
+   "date": "18/01/2018",
+   "total": "26.60"
+  }
+ },
+ "sroie_010.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "SAM SAM TRADING CO",
+   "date": "29-12-2017",
+   "total": "14.10"
+  }
+ },
+ "sroie_011.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "AIK HUAT HARDWARE ENTERPRISE (SETIA ALAM) SDN BHD",
+   "date": "15/06/2017",
+   "total": "15.00"
+  }
+ },
+ "sroie_012.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "HOME MASTER HARDWARE & ELECTRICAL",
+   "date": "22/12/2017",
+   "total": "15.90"
+  }
+ },
+ "sroie_013.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "RESTORAN HASSANBISTRO",
+   "date": "12/28/2017",
+   "total": "15.00"
+  }
+ },
+ "sroie_014.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "ASIA MART",
+   "date": "22/12/2017",
+   "total": "32.70"
+  }
+ },
+ "sroie_015.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "HOME MASTER HARDWARE & ELECTRICAL",
+   "date": "22/12/2017",
+   "total": "15.90"
+  }
+ },
+ "sroie_016.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "LIGHTROOM GALLERY SDN BHD",
+   "date": "20/12/2017",
+   "total": "73.00"
+  }
+ },
+ "sroie_017.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "LIGHTROOM GALLERY SDN BHD",
+   "date": "20/11/2017",
+   "total": "39.80"
+  }
+ },
+ "sroie_018.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "LIGHTROOM GALLERY SDN BHD",
+   "date": "20/12/2017",
+   "total": "73.00"
+  }
+ },
+ "sroie_019.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "SHELL ISNI PETRO TRADING",
+   "date": "18/03/18",
+   "total": "86.00"
+  }
+ },
+ "sroie_020.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "SYL ROASTED DELIGHTS SDN. BHD.",
+   "date": "06/03/2018",
+   "total": "54.50"
+  }
+ },
+ "sroie_021.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "TEO HENG STATIONERY & BOOKS",
+   "date": "18/01/2018",
+   "total": "4.90"
+  }
+ },
+ "sroie_022.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "FUYI MINI MARKET",
+   "date": "25/01/2018",
+   "total": "9.00"
+  }
+ },
+ "sroie_023.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "TEO HENG STATIONERY & BOOKS",
+   "date": "17/01/2018",
+   "total": "27.55"
+  }
+ },
+ "sroie_024.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "TEO HENG STATIONERY & BOOKS",
+   "date": "15/01/2018",
+   "total": "55.10"
+  }
+ },
+ "sroie_025.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "TEO HENG STATIONERY & BOOKS",
+   "date": "23/01/2018",
+   "total": "18.00"
+  }
+ },
+ "sroie_026.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "TED HENG STATIONERY & BOOKS",
+   "date": "12/02/2018",
+   "total": "153.35"
+  }
+ },
+ "sroie_027.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "MR. D.I.Y. (M) SDN BHD",
+   "date": "14-03-18",
+   "total": "37.10"
+  }
+ },
+ "sroie_028.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "99 SPEED MART S/B",
+   "date": "24-01-18",
+   "total": "2.50"
+  }
+ },
+ "sroie_029.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "C W KHOO HARDWARE SDN BHD",
+   "date": "01-03-18",
+   "total": "21.20"
+  }
+ },
+ "sroie_030.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "UNIHAKKA INTERNATIONAL SDN BHD",
+   "date": "05 MAR 2018",
+   "total": "$8.20"
+  }
+ },
+ "sroie_031.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "AEON CO. (M) BHD",
+   "date": "06/03/2018",
+   "total": "75.00"
+  }
+ },
+ "sroie_032.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "UNIHAKKA INTERNATIONAL SDN BHD",
+   "date": "03 MAR 2018",
+   "total": "$8.20"
+  }
+ },
+ "sroie_033.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "UNIHAKKA INTERNATIONAL SDN BHD",
+   "date": "10 MAR 2018",
+   "total": ""
+  }
+ },
+ "sroie_034.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "PERNIAGAAN ZHENG HUI",
+   "date": "09/03/2018",
+   "total": "332.30"
+  }
+ },
+ "sroie_035.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "UNIHAKKA INTERNATIONAL SDN BHD",
+   "date": "12 MAR 2018",
+   "total": "$8.20"
+  }
+ },
+ "sroie_036.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "UNIHAKKA INTERNATIONAL SDN BHD",
+   "date": "14 MAR 2018",
+   "total": "$8.20"
+  }
+ },
+ "sroie_037.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "WARAKUYA PERMAS CITY SDN BHD",
+   "date": "10/03/2018",
+   "total": "57.80"
+  }
+ },
+ "sroie_038.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "YHM AEON TEBRAU CITY",
+   "date": "11/03/2018",
+   "total": "13.10"
+  }
+ },
+ "sroie_039.txt": {
+  "type": "invoice",
+  "fields": {
+   "merchant": "OWNER BY CASTLE BLUE S/B",
+   "date": "30/03/2018",
+   "total": "189.75"
+  }
+ },
+ "demo_contract.txt": {
+  "type": "contract",
+  "fields": {}
+ },
+ "demo_medical.txt": {
+  "type": "medical",
+  "fields": {}
+ },
+ "demo_report.txt": {
+  "type": "report",
+  "fields": {}
+ }
+}
