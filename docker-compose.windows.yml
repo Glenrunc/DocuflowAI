@@ -1,0 +1,94 @@
+# Windows local launch — Ollama reuses host models via bind mount.
+# Uses pgvector/pgvector:pg16 for vector search + HNSW indexes.
+name: docuflow
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - C:\Users\clemb\.ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Auto-pull the embedding model if missing, then report healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q nomic-embed-text || ollama pull nomic-embed-text; ollama list | grep -q nomic-embed-text"]
+      interval: 15s
+      timeout: 120s
+      retries: 5
+      start_period: 10s
+
+  db:
+    build:
+      context: .
+      dockerfile: backend/db.Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-docuflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docuflow}
+      POSTGRES_DB: ${POSTGRES_DB:-docuflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://docuflow:docuflow@db:5432/docuflow
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5:7b
+      OLLAMA_QA_MODEL: qwen2.5:7b
+      OLLAMA_EMBED_MODEL: nomic-embed-text
+      OCR_DEVICE: cpu
+    volumes:
+      - ./backend/storage:/app/storage
+      - ./backend/app:/app/app
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://docuflow:docuflow@db:5432/docuflow
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5:7b
+      OLLAMA_QA_MODEL: qwen2.5:7b
+      OLLAMA_EMBED_MODEL: nomic-embed-text
+      OCR_DEVICE: cpu
+    volumes:
+      - ./backend/storage:/app/storage
+      - ./backend/app:/app/app
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
