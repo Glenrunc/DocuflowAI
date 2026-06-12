@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 
 from ..config import settings
 from ..models import Chunk, Document
-from ..schema_def import PLACEHOLDER, doc_types, get_type
+from ..schema_def import PLACEHOLDER
 from ..summary_calc import parse_money
 from .embed import embed_query, hybrid_search, search_bm25, search_vectors
 from .llm import client
@@ -92,23 +92,6 @@ _SYSTEM = (
     "(montants, dates, noms, numéros). Ne dis pas juste 'l'information est disponible'.\n"
     "- Maximum {max_steps} étapes.\n"
 )
-
-
-# Synonyms the model tends to invent → canonical field key.
-_FIELD_ALIASES = {
-    "amount": "total", "montant": "total", "somme": "total", "prix": "total",
-    "price": "total", "spend": "total", "cost": "total", "sum": "total",
-}
-
-
-def _schema_hint() -> str:
-    """Per-type field keys so the agent uses real keys (e.g. 'total') instead of guessing."""
-    lines = []
-    for t in doc_types():
-        keys = ", ".join(f.key for f in get_type(t).fields)
-        if keys:
-            lines.append(f"  {t}: {keys}")
-    return "Champs disponibles par type (utilise EXACTEMENT ces clés pour aggregate/detail):\n" + "\n".join(lines)
 
 
 # ── Tool implementations ─────────────────────────────────────────────
@@ -302,14 +285,6 @@ def _tool_aggregate(session: Session, params: dict) -> str:
     if not docs:
         return "Aucun document traité trouvé."
 
-<<<<<<< HEAD
-    target = _FIELD_ALIASES.get(field_key.strip().lower(), field_key.strip().lower())
-    values: list[float] = []
-    for d in docs:
-        for f in (d.fields or []):
-            # the model may pass the field key ('total'), its label ('Total'), or a synonym
-            if target in (str(f.get("key", "")).lower(), str(f.get("label", "")).lower()):
-=======
     seen_filenames: set[str] = set()
     unique_docs: list[Document] = []
     for d in docs:
@@ -334,7 +309,6 @@ def _tool_aggregate(session: Session, params: dict) -> str:
     for d in docs:
         for f in (d.fields or []):
             if f.get("key", "") == resolved_key:
->>>>>>> origin/Agentic-RAG
                 v = parse_money(f.get("value", ""))
                 if v is not None:
                     values.append(v)
@@ -447,32 +421,6 @@ def _parse_action(text: str) -> dict | None:
         return None
 
 
-<<<<<<< HEAD
-_ANSWER_PROMPT = (
-    "Tu as assez d'information. Rédige MAINTENANT la réponse finale pour l'utilisateur, "
-    "en te basant sur les observations ci-dessus. Concise, factuelle, dans la langue de la "
-    "question. Ne renvoie PAS de JSON, juste la réponse."
-)
-
-
-def _stream_answer(messages: list[dict]):
-    """One final, streamed generation on the fast model — gives an immediate response feel."""
-    msgs = messages + [{"role": "user", "content": _ANSWER_PROMPT}]
-    for chunk in client().chat(
-        model=settings.ollama_model,
-        stream=True,
-        keep_alive="30m",
-        options={"temperature": 0, "num_predict": 512},
-        messages=msgs,
-    ):
-        content = chunk["message"]["content"]
-        if content:
-            yield {"type": "answer", "text": content}
-
-
-def run_agent(session: Session, question: str):
-    """Generator that yields streaming events as the agent reasons and acts.
-=======
 # ── Answer refinement ────────────────────────────────────────────────
 
 _VAGUE_PATTERNS = re.compile(
@@ -526,7 +474,6 @@ def _refine_answer(question: str, raw_answer: str, messages: list[dict]) -> str:
 
 def run_agent(session: Session, question: str, history: list[tuple[str, str]] | None = None):
     """Generator yielding streaming events as the agent reasons and acts.
->>>>>>> origin/Agentic-RAG
 
     Yields dicts: {'type': 'thinking'|'tool'|'answer', 'text': str}
     """
@@ -535,14 +482,6 @@ def run_agent(session: Session, question: str, history: list[tuple[str, str]] | 
 
     messages: list[dict] = [
         {"role": "system", "content": system},
-<<<<<<< HEAD
-        {"role": "user", "content": (
-            f"Contexte de la collection:\n{collection_stats}\n\n"
-            f"{_schema_hint()}\n\n"
-            f"Question de l'utilisateur: {question}"
-        )},
-=======
->>>>>>> origin/Agentic-RAG
     ]
 
     if history:
@@ -565,11 +504,7 @@ def run_agent(session: Session, question: str, history: list[tuple[str, str]] | 
                 model=settings.ollama_model,
                 format="json",
                 keep_alive="30m",
-<<<<<<< HEAD
-                options={"temperature": 0, "num_predict": 192},
-=======
                 options={"temperature": 0, "num_predict": 1024},
->>>>>>> origin/Agentic-RAG
                 messages=messages,
             )
             raw = resp["message"]["content"]
@@ -580,12 +515,8 @@ def run_agent(session: Session, question: str, history: list[tuple[str, str]] | 
 
         action = _parse_action(raw)
         if action is None:
-<<<<<<< HEAD
-            yield {"type": "answer", "text": raw}
-=======
             clean = _strip_think_tags(raw)
             yield {"type": "answer", "text": clean or "Je n'ai pas pu traiter la demande."}
->>>>>>> origin/Agentic-RAG
             return
 
         thought = action.get("thought", "")
@@ -608,13 +539,9 @@ def run_agent(session: Session, question: str, history: list[tuple[str, str]] | 
             yield {"type": "thinking", "text": thought}
 
         if action_name == "answer":
-<<<<<<< HEAD
-            yield from _stream_answer(messages)
-=======
             answer_text = params.get("text") or thought or raw
             refined = _refine_answer(question, answer_text, messages)
             yield {"type": "answer", "text": refined}
->>>>>>> origin/Agentic-RAG
             return
 
         tool_fn = _TOOL_DISPATCH.get(action_name)
@@ -631,9 +558,6 @@ def run_agent(session: Session, question: str, history: list[tuple[str, str]] | 
         messages.append({"role": "assistant", "content": raw})
         messages.append({"role": "user", "content": f"Observation:\n{observation}"})
 
-<<<<<<< HEAD
-    yield from _stream_answer(messages)  # step budget exhausted — answer from what we have
-=======
     # Max steps reached — force a final answer
     messages.append({"role": "user", "content": (
         f"Limite d'étapes atteinte. Rappel de la question: {question}\n"
@@ -657,7 +581,6 @@ def run_agent(session: Session, question: str, history: list[tuple[str, str]] | 
     except Exception:
         pass
     yield {"type": "answer", "text": "J'ai atteint la limite d'étapes sans pouvoir conclure."}
->>>>>>> origin/Agentic-RAG
 
 
 def stream_agent(session: Session, question: str, history: list[tuple[str, str]] | None = None):

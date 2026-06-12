@@ -35,13 +35,48 @@ def test_apply_backstops_fills_missing_total():
     assert by_key["total"].confidence == "med"
 
 
-def test_apply_backstops_keeps_confident_llm_value():
-    fields = [_vf("total", "RM 99.00", "high")]
+def test_apply_backstops_overrides_total_contradicting_total_line():
+    # LLM confidently grabbed the CASH amount — the explicit TOTAL line wins.
+    fields = [_vf("total", "RM 50.00", "high")]
     apply_backstops("invoice", fields, RECEIPT)
-    assert fields[0].value == "RM 99.00"
+    assert fields[0].value == "RM 30.90"
+    assert fields[0].confidence == "med"
+
+
+def test_apply_backstops_keeps_llm_total_matching_total_line():
+    fields = [_vf("total", "30.90", "high")]
+    apply_backstops("invoice", fields, RECEIPT)
+    assert fields[0].value == "30.90"
+    assert fields[0].confidence == "high"
+
+
+def test_apply_backstops_keeps_llm_total_when_no_total_line():
+    fields = [_vf("total", "12.40", "high")]
+    apply_backstops("invoice", fields, "Item A 5.00\nItem B 12.40")
+    assert fields[0].value == "12.40"
 
 
 def test_apply_backstops_noop_for_non_invoice():
     fields = [_vf("total", PLACEHOLDER, "low")]
     apply_backstops("contract", fields, RECEIPT)
     assert fields[0].value == PLACEHOLDER
+
+
+# Real SROIE receipt shape: LLM picked CASH 70.30, true total on the TOTAL AMT line.
+INDAH_RECEIPT = (
+    "INDAH GIFT & HOME DECO\n"
+    "62483 1 55.90 55.90\n"
+    "@DISC 10.00% -5.59\n"
+    "#Total Qty 2\n"
+    "TOTAL AMT............... RM 60.31\n"
+    "ROUNDING ADJ............ -0.01\n"
+    "RM 60.30\n"
+    "CASH.................... RM 70.30\n"
+    "CHANGE.................. RM 10.00"
+)
+
+
+def test_apply_backstops_fixes_cash_grabbed_as_total():
+    fields = [_vf("total", "70.30", "high")]
+    apply_backstops("invoice", fields, INDAH_RECEIPT)
+    assert fields[0].value == "RM 60.31"

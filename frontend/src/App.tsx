@@ -125,7 +125,15 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell" style={{ ["--sidebar-w" as string]: collapsed ? "44px" : "240px" }}>
+    <div
+      className="app-shell"
+      style={{ ["--sidebar-w" as string]: collapsed ? "44px" : "240px" }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) upload(e.dataTransfer.files);
+      }}
+    >
       <Topbar
         tab={tab}
         onTab={setTab}

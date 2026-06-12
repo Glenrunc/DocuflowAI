@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from ..schema_def import PLACEHOLDER, ValidatedField
+from ..summary_calc import parse_money
 
 # A currency amount, optional symbol/code + ##.## . Captured group is the symbol+number.
 _AMOUNT = re.compile(
@@ -29,17 +30,30 @@ def _amount_str(match: re.Match) -> str:
     return f"{sym} {num}".strip() if sym else num
 
 
-def find_amount(text: str) -> str | None:
-    """The document total. Prefer the amount on a 'total'/'amount due' line (excluding
-    subtotal/change/cash); otherwise the largest amount in the text."""
+def _total_line_matches(text: str) -> list[re.Match]:
+    """Amounts found on 'total'/'amount due' lines (excluding subtotal/change/cash)."""
     preferred: list[re.Match] = []
     for line in text.splitlines():
         if _EXCLUDE_LINE.search(line):
             continue
         if _TOTAL_LINE.search(line):
             preferred.extend(_AMOUNT.finditer(line))
+    return preferred
 
-    candidates = preferred or list(_AMOUNT.finditer(text))
+
+def find_total_line_amount(text: str) -> str | None:
+    """The amount on an explicit total line, or None if the document has no such line."""
+    matches = _total_line_matches(text)
+    if not matches:
+        return None
+    best = max(matches, key=lambda m: float(m.group(2).replace(",", "")))
+    return _amount_str(best)
+
+
+def find_amount(text: str) -> str | None:
+    """The document total. Prefer the amount on a 'total'/'amount due' line (excluding
+    subtotal/change/cash); otherwise the largest amount in the text."""
+    candidates = _total_line_matches(text) or list(_AMOUNT.finditer(text))
     if not candidates:
         return None
     best = max(candidates, key=lambda m: float(m.group(2).replace(",", "")))
@@ -54,7 +68,8 @@ def find_date(text: str) -> str | None:
 
 def apply_backstops(doc_type: str, fields: list[ValidatedField], ocr_text: str) -> None:
     """Fill invoice ``total``/``date`` in place when the LLM left them empty or low-confidence.
-    Never overrides a med/high LLM value."""
+    A ``total`` that contradicts an explicit total line (LLM grabbed CASH/CHANGE instead)
+    is overridden by that line, regardless of the LLM's confidence."""
     if doc_type != "invoice":
         return
 
@@ -69,4 +84,14 @@ def apply_backstops(doc_type: str, fields: list[ValidatedField], ocr_text: str) 
         found = finder(ocr_text)
         if found:
             vf.value = found
+            vf.confidence = "med"
+
+    for vf in fields:
+        if vf.key != "total" or vf.value == PLACEHOLDER:
+            continue
+        authoritative = find_total_line_amount(ocr_text)
+        if authoritative is None:
+            continue
+        if parse_money(vf.value) != parse_money(authoritative):
+            vf.value = authoritative
             vf.confidence = "med"

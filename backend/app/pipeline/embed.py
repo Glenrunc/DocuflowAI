@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import math
 
-from sqlmodel import Session, delete
+from sqlalchemy import text
+from sqlmodel import Session, delete, select
 
 from ..config import settings
 from ..models import Chunk, Document
@@ -96,3 +97,51 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     if na == 0 or nb == 0:
         return 0.0
     return dot / (na * nb)
+
+
+def _chunk_result(c: Chunk, score: float, key: str = "score") -> dict:
+    return {"doc_id": c.doc_id, "page": c.page, "content": c.content, key: score}
+
+
+def search_vectors(session: Session, query_vec: list[float], top_k: int) -> list[dict]:
+    """Cosine similarity over all stored chunk embeddings."""
+    chunks = session.exec(select(Chunk)).all()
+    scored = [
+        _chunk_result(c, cosine_similarity(query_vec, c.embedding))
+        for c in chunks
+        if c.embedding
+    ]
+    scored.sort(key=lambda r: r["score"], reverse=True)
+    return scored[:top_k]
+
+
+def search_bm25(session: Session, query: str, top_k: int) -> list[dict]:
+    """Keyword search over chunk content via Postgres full-text search."""
+    fts = text(
+        "SELECT id FROM chunk "
+        "WHERE to_tsvector('french', content) @@ plainto_tsquery('french', :q) "
+        "ORDER BY ts_rank(to_tsvector('french', content), plainto_tsquery('french', :q)) DESC "
+        "LIMIT :k"
+    )
+    rows = session.execute(fts, {"q": query, "k": top_k}).all()
+    out = []
+    for rank, (chunk_id,) in enumerate(rows):
+        c = session.get(Chunk, chunk_id)
+        if c:
+            out.append(_chunk_result(c, 1.0 / (rank + 1)))
+    return out
+
+
+def hybrid_search(session: Session, query: str, query_vec: list[float], top_k: int) -> list[dict]:
+    """Reciprocal-rank fusion of vector and keyword search results."""
+    k_rrf = 60  # standard RRF damping constant
+    fused: dict[tuple, dict] = {}
+    for results in (search_vectors(session, query_vec, top_k), search_bm25(session, query, top_k)):
+        for rank, r in enumerate(results):
+            key = (r["doc_id"], r["page"], r["content"])
+            entry = fused.setdefault(
+                key, {"doc_id": r["doc_id"], "page": r["page"], "content": r["content"], "rrf_score": 0.0}
+            )
+            entry["rrf_score"] += 1.0 / (k_rrf + rank + 1)
+    ranked = sorted(fused.values(), key=lambda r: r["rrf_score"], reverse=True)
+    return ranked[:top_k]

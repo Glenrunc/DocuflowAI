@@ -170,7 +170,9 @@ def summarize_doc(doc_type: str, fields: list[dict], ocr_text: str) -> str:
     }
     system = (
         "Tu résumes un document administratif en UNE seule phrase courte et factuelle, en "
-        "français. Pas de préambule, pas de liste — juste la phrase."
+        "français. Pas de préambule, pas de liste — juste la phrase. Pour les montants et "
+        "dates, recopie EXACTEMENT les valeurs des champs extraits (devise comprise) — "
+        "n'utilise pas les montants du texte brut."
     )
     prompt = (
         f"Type: {doc_type}.\n"

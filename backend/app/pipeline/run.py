@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from ..categories import category_choices, resolve_categories
-from ..currency import convert_total_to_eur
+from ..currency import convert_money_fields_to_eur
 from ..models import Document
 from ..schema_def import PLACEHOLDER, validate_fields
 from ..storage_tree import place
@@ -55,7 +55,7 @@ def process_document(session: Session, doc: Document) -> None:
                 item["bbox"] = bbox
         fields.append(item)
     # Convert after bbox derivation so the highlight still points at the original amount.
-    convert_total_to_eur(doc_type, fields)
+    convert_money_fields_to_eur(doc_type, fields, ocr.text)
     doc.fields = fields
     extract_ms = int((time.monotonic() - t) * 1000)
 

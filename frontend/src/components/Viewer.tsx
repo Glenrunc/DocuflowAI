@@ -46,6 +46,7 @@ export function ViewerEmpty({ onFiles }: { onFiles: (f: FileList) => void }) {
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             setDrag(false);
             if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files);
           }}
