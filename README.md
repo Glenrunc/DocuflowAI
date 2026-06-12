@@ -1,86 +1,102 @@
 # DocuFlow AI
 
-Centralizes administrative documents (invoices, contracts, medical forms, reports,
-IDs/certificates), extracts their key fields with **OCR + a local LLM**, organizes them by
-type, and answers natural-language questions **about a single document or across the whole
-collection** (with live "thinking").
+Centralise les documents administratifs (factures, contrats, documents médicaux, rapports,
+pièces d'identité/certificats), extrait leurs champs clés avec **OCR + LLM local**, les range
+par type, et répond à des questions en langage naturel **sur un document ou sur toute la
+collection** (avec raisonnement affiché en direct).
 
-Everything runs locally: OCR via **docTR**, language model via **Ollama** — no external API
-calls, no secrets baked into the images.
+Tout tourne en local : OCR via **docTR**, modèle de langage via **Ollama** — aucun appel à
+une API externe, aucun secret dans les images Docker.
 
 ## Architecture
 
-| Layer | Choice | Why |
+| Couche | Choix | Pourquoi |
 |---|---|---|
-| Backend | Python 3.12, FastAPI, Pydantic v2, SQLModel | docTR/Ollama are Python; strict typing |
-| OCR | docTR (GPU, CPU fallback) | imposed; word-level geometry → field bboxes |
-| LLM | Ollama `qwen2.5:3b` (pipeline) + `qwen3:4b` (QA agent) | local; fit 6 GB VRAM alongside docTR |
-| Embeddings | Ollama `nomic-embed-text` (768d) | chunked OCR text, stored in `chunk` table |
-| DB | Postgres (JSONB) | metadata + extracted fields/bboxes/OCR text/embeddings |
-| Queue | `jobs` table + 1 worker (`FOR UPDATE SKIP LOCKED`) | serializes the GPU; durable; no Redis |
-| Frontend | React + TS + Vite, CSS variables | design tokens; no heavy UI framework |
+| Backend | Python 3.12, FastAPI, Pydantic v2, SQLModel | docTR/Ollama sont en Python ; typage strict |
+| OCR | docTR (GPU, repli CPU) | géométrie au mot → zones des champs |
+| LLM | Ollama `qwen2.5` (3b sur 6 Go de VRAM, 7b si ça tient) | un seul modèle pour le pipeline, la QA et la boucle d'agent |
+| Embeddings | Ollama `nomic-embed-text` (768d) | texte OCR découpé en chunks, stocké en table `chunk` |
+| BDD | Postgres (JSONB) | métadonnées + champs/zones/texte OCR/embeddings |
+| File d'attente | table `jobs` + 1 worker (`FOR UPDATE SKIP LOCKED`) | sérialise le GPU ; durable ; pas de Redis |
+| Frontend | React + TS + Vite, variables CSS | design tokens ; pas de framework UI lourd |
 
-The **field schemas live once** in `shared/schemas.json`, consumed by both the backend
-(Pydantic validation) and the frontend (typed import). Six types: invoice, contract,
-medical, report, id, other.
+Les **schémas de champs vivent à un seul endroit**, `shared/schemas.json`, consommé à la
+fois par le backend (validation Pydantic) et par le frontend (import typé). Six types :
+invoice, contract, medical, report, id, other.
 
-### Processing pipeline (worker, GPU-serialized)
+### Pipeline de traitement (worker, GPU sérialisé)
 
 ```
-queued → processing → OCR (docTR) → classify type (Ollama) → parse fields (Ollama, strict JSON)
-       → validate against schema → derive bbox (match value ↔ docTR words) → duplicate check
-       → embed chunks (nomic-embed-text) → done
+queued → processing → OCR (docTR) → classification du type (Ollama) → extraction des champs (Ollama, JSON strict)
+       → validation contre le schéma → backstops (corrections déterministes) → dérivation des zones (bbox)
+       → normalisation des montants en EUR → détection de doublons → rangement sur disque
+       → découpage + embeddings (nomic-embed-text) → done
 ```
 
-Bounding boxes are **derived server-side** by matching each extracted value against docTR
-word geometry (rapidfuzz) — never guessed by the LLM. Duplicate detection compares the
-type's *identifying* fields (normalized fuzzy similarity), not embeddings.
+Les zones (bounding boxes) sont **dérivées côté serveur** en faisant correspondre chaque
+valeur extraite à la géométrie des mots docTR (rapidfuzz) — jamais devinées par le LLM. La
+détection de doublons compare les champs *identifiants* du type (similarité floue
+normalisée), pas les embeddings.
 
-### QA — two scopes
+Deux garde-fous déterministes à connaître :
 
-- **Single document**: the active doc's OCR text + extracted fields are stuffed into
-  `qwen2.5:3b`. The cited snippet is located back in the OCR text → `Found on line N: "…"`.
-- **Whole collection (Agentic RAG)**: a ReAct-style agent loop powered by `qwen3:4b`.
-  Documents are chunked and embedded at processing time (`nomic-embed-text` via Ollama,
-  stored as JSON vectors in a `chunk` table). The agent has **4 tools**: `search` (vector
-  similarity), `filter` (type/keyword), `detail` (full doc), `aggregate` (sum/avg/count
-  on numeric fields). It reasons step-by-step (streamed live as NDJSON) and decides when
-  it has enough information to answer. Scales beyond the context-stuffing limit of ~200 docs.
+- **Backstop du total** : si le texte OCR contient une ligne de total explicite (`TOTAL`,
+  `AMOUNT DUE`, …) et que le total extrait par le LLM la contredit (typiquement le montant
+  CASH/CHANGE), c'est la ligne du document qui gagne, quelle que soit la confiance du LLM.
+- **Normalisation des devises** : les champs monétaires (`invoice.total`, `invoice.taxes`,
+  `contract.value`) sont réécrits en EUR à taux fixes embarqués. Un montant sans symbole
+  est converti selon la devise dominante du texte OCR (reçus SROIE : le `RM` est sur les
+  lignes de prix, pas dans le total extrait). Les taux (`%`) ne sont jamais convertis.
 
-PDFs are displayed as a **server-rendered page image** (same raster docTR used), so the
-field bounding-box overlay aligns exactly — the browser's native PDF viewer is not used.
+### QA — deux portées
 
-## Quick start (Docker)
+- **Document unique** : le texte OCR du document actif + ses champs extraits sont injectés
+  dans le LLM. L'extrait cité est relocalisé dans le texte OCR → `Found on line N: "…"`.
+- **Collection entière (RAG agentique)** : une boucle d'agent de type ReAct sur le même
+  modèle `qwen2.5`. Les documents sont découpés (~500 mots, recouvrement 50) et plongés en
+  vecteurs à l'indexation (`nomic-embed-text`, stockés en JSON dans la table `chunk`).
+  L'agent dispose de **4 outils** : `search` (recherche hybride : cosinus sur les
+  embeddings + recherche plein texte Postgres, fusion par reciprocal rank fusion),
+  `filter` (type/mot-clé), `detail` (texte et champs complets d'un document), `aggregate`
+  (somme/moyenne/min/max calculés côté serveur, jamais par le modèle). Chaque étape est un
+  JSON strict, plafonnée à 20 étapes, avec détection d'action répétée. Le raisonnement est
+  streamé en direct (NDJSON). Passe à l'échelle au-delà de la limite (~200 docs) de
+  l'injection de contexte.
 
-Requires Docker + the **NVIDIA Container Toolkit** for GPU.
+Les PDF sont affichés via une **image de page rendue côté serveur** (le même raster que
+celui passé à docTR), donc la surbrillance des zones s'aligne exactement — le visualiseur
+PDF natif du navigateur n'est pas utilisé.
+
+## Démarrage rapide (Docker)
+
+Nécessite Docker + le **NVIDIA Container Toolkit** pour le GPU.
 
 ```bash
-cp .env.example .env          # adjust if needed; no secrets required
-docker compose up --build     # starts db, ollama, backend, worker, frontend
-docker compose exec ollama ollama pull qwen2.5:3b      # pipeline model (one-time)
-docker compose exec ollama ollama pull qwen3:4b        # collection-QA agent model (one-time)
-docker compose exec ollama ollama pull nomic-embed-text # RAG embedding model (one-time)
+cp .env.example .env          # à ajuster si besoin ; aucun secret requis
+docker compose up --build     # démarre db, ollama, backend, worker, frontend
+docker compose exec ollama ollama pull qwen2.5:3b       # LLM (une fois ; ou qwen2.5:7b avec >6 Go de VRAM)
+docker compose exec ollama ollama pull nomic-embed-text  # modèle d'embeddings RAG (une fois)
 ```
 
-> On a local GPU machine, use `docker compose -f docker-compose.local.yml up --build` —
-> it bind-mounts the host's already-downloaded Ollama models (no re-pull).
+> Sur une machine avec GPU local, utiliser `docker compose -f docker-compose.local.yml up --build` —
+> elle réutilise les modèles Ollama déjà téléchargés sur l'hôte (pas de re-pull).
 
-- Frontend: http://localhost:5173
-- API: http://localhost:8000  (health: `/api/health`)
+- Frontend : http://localhost:5173
+- API : http://localhost:8000  (santé : `/api/health`)
 
-Upload a document, watch the sidebar move `queued → processing → done`, then inspect the
-extracted fields, hover a field to highlight its bbox, ask a question, or open the Summary
-tab to export CSV.
+Déposer un document, suivre la barre latérale `queued → processing → done`, puis inspecter
+les champs extraits, survoler un champ pour surligner sa zone, poser une question, ou ouvrir
+l'onglet Résumé pour exporter le CSV.
 
-### CPU fallback (no GPU)
+### Repli CPU (sans GPU)
 
-Set `OCR_DEVICE=cpu` in `.env` and remove the `deploy.resources` GPU blocks for the
-`ollama` and `worker` services in `docker-compose.yml`. Everything still works — OCR and
-inference are just slower.
+Mettre `OCR_DEVICE=cpu` dans `.env` et retirer les blocs GPU `deploy.resources` des services
+`ollama` et `worker` dans `docker-compose.yml`. Tout fonctionne — OCR et inférence sont
+juste plus lents.
 
-## Local development (no Docker)
+## Développement local (sans Docker)
 
-**Backend** (needs a running Postgres + Ollama):
+**Backend** (nécessite un Postgres et un Ollama en marche) :
 
 ```bash
 cd backend
@@ -89,42 +105,44 @@ pip install -r requirements.txt
 
 export DATABASE_URL="postgresql+psycopg://docuflow:docuflow@localhost:5432/docuflow"
 export OLLAMA_HOST="http://localhost:11434"
-export OCR_DEVICE=cuda            # or cpu
+export OCR_DEVICE=cuda            # ou cpu
 
-uvicorn app.main:app --reload     # API on :8000
-python -m app.worker              # worker, separate terminal
+uvicorn app.main:app --reload     # API sur :8000
+python -m app.worker              # worker, terminal séparé
 ```
 
-Pull the models once: `ollama pull qwen2.5:3b && ollama pull qwen3:4b && ollama pull nomic-embed-text`.
+Télécharger les modèles une fois : `ollama pull qwen2.5:3b && ollama pull nomic-embed-text`.
 
-**Frontend:**
+**Frontend :**
 
 ```bash
 cd frontend
 npm install
-npm run dev                       # Vite on :5173, proxies /api → :8000
+npm run dev                       # Vite sur :5173, proxy /api → :8000
 ```
 
 ## Configuration
 
-All settings come from environment variables (see `backend/app/config.py` / `.env.example`):
+Tous les réglages viennent de variables d'environnement (voir `backend/app/config.py` /
+`.env.example`) :
 
-| Var | Default | Notes |
+| Variable | Défaut | Notes |
 |---|---|---|
-| `DATABASE_URL` | local Postgres | `postgresql+psycopg://…` |
+| `DATABASE_URL` | Postgres local | `postgresql+psycopg://…` |
 | `OLLAMA_HOST` | `http://localhost:11434` | |
-| `OLLAMA_MODEL` | `qwen2.5:3b` | pipeline (classify/parse) + single-doc QA |
-| `OLLAMA_QA_MODEL` | `qwen3:4b` | collection QA; agentic RAG reasoning model |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | embedding model for RAG vector store |
-| `OCR_DEVICE` | `cuda` | `cpu` = degraded fallback |
-| `DUPLICATE_THRESHOLD` | `0.85` | similarity cutoff |
+| `OLLAMA_MODEL` | `qwen2.5:3b` (docker) / `qwen2.5:7b` (défaut config) | pipeline + QA + boucle d'agent |
+| `OLLAMA_QA_MODEL` | `qwen2.5:7b` | réponse de repli quand l'agent atteint son plafond d'étapes |
+| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | modèle d'embeddings du RAG |
+| `OCR_DEVICE` | `cuda` | `cpu` = repli dégradé |
+| `DUPLICATE_THRESHOLD` | `0.85` | seuil de similarité |
 
-### Hardware note
+### Note matériel
 
-Developed against an **RTX 3060 Laptop (6 GB VRAM)**. docTR (~1.5 GB) + `qwen2.5:3b`
-(pipeline) coexist comfortably; the `qwen3:4b` QA model is loaded on demand (`keep_alive`)
-and may briefly evict the pipeline model — fine since collection QA is interactive. Larger
-(8B) models would force constant load/unload and are not the default.
+Développé sur une **RTX 3060 Laptop (6 Go de VRAM)**. docTR (~1,5 Go) + `qwen2.5:3b`
+cohabitent sans problème, et `nomic-embed-text` n'ajoute que ~270 Mo. La boucle d'agent
+réutilise le modèle du pipeline, donc rien n'est évincé. Les modèles plus gros (7B+)
+forcent des chargements/déchargements entre OCR et inférence sur 6 Go — à réserver aux
+cartes mieux dotées (`OLLAMA_MODEL=qwen2.5:7b`).
 
 ## Tests
 
@@ -133,19 +151,22 @@ cd backend && source .venv/bin/activate
 pytest
 ```
 
-Unit tests cover schema validation, bbox derivation, duplicate similarity, CSV export and
-citation building. The integration test (`test_pipeline_integration.py`) runs the full
-`process_document` orchestration on in-memory SQLite with OCR and Ollama mocked — so the
-suite needs **no GPU and no Ollama**. A real-stack end-to-end run is exercised manually via
-`docker compose up` (see Quick start).
+83 tests couvrent la validation de schéma, la dérivation des zones, la similarité de
+doublons, l'export CSV, la construction des citations, les backstops (dont l'écrasement par
+la ligne de total), la normalisation des devises (détection, conversion, devise déduite de
+l'OCR) et la boucle d'agent (parsing des actions, outils, agrégats). Le test d'intégration
+(`test_pipeline_integration.py`) exécute l'orchestration complète `process_document` sur
+SQLite en mémoire avec OCR et Ollama remplacés par des doublures — la suite ne nécessite
+donc **ni GPU ni Ollama**. Un passage bout en bout sur la vraie pile se fait manuellement
+via `docker compose up` (voir Démarrage rapide).
 
-## Layout
+## Arborescence
 
 ```
-shared/schemas.json        # single source of truth for the 6 document types
-backend/app/               # FastAPI app, routes, pipeline (ocr/classify/parse/bbox/dup), worker
-backend/tests/             # pytest suite
-frontend/src/              # React + TS UI (schema-driven)
-docker-compose.yml         # portable stack: db + ollama + backend + worker + frontend
-docker-compose.local.yml   # local GPU stack (reuses host's Ollama models)
+shared/schemas.json        # source unique de vérité pour les 6 types de documents
+backend/app/               # app FastAPI, routes, pipeline (ocr/classify/parse/bbox/embed/agent), worker
+backend/tests/             # suite pytest
+frontend/src/              # UI React + TS (pilotée par le schéma)
+docker-compose.yml         # pile portable : db + ollama + backend + worker + frontend
+docker-compose.local.yml   # pile GPU locale (réutilise les modèles Ollama de l'hôte)
 ```
