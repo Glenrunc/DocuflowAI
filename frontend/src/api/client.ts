@@ -75,6 +75,7 @@ export const api = {
 
   askAllStream: async (
     question: string,
+    history: { question: string; answer: string }[],
     cb: {
       onThinking: (delta: string) => void;
       onAnswer: (delta: string) => void;
@@ -84,7 +85,7 @@ export const api = {
     const res = await fetch("/api/qa", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, history }),
     });
     if (!res.ok || !res.body) throw new Error(`QA failed (${res.status})`);
     const reader = res.body.getReader();

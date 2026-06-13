@@ -484,16 +484,20 @@ def run_agent(session: Session, question: str, history: list[tuple[str, str]] | 
         {"role": "system", "content": system},
     ]
 
+    convo = ""
     if history:
+        convo = "HISTORIQUE DE LA CONVERSATION (tours précédents, du plus ancien au plus récent):\n"
         for prev_q, prev_a in history:
-            messages.append({"role": "user", "content": f"Question: {prev_q}"})
-            messages.append({"role": "assistant", "content": json.dumps(
-                {"thought": "", "action": "answer", "params": {"text": prev_a}},
-                ensure_ascii=False,
-            )})
+            convo += f"- Utilisateur: {prev_q}\n  Assistant: {prev_a}\n"
+        convo += (
+            "\nSi la question actuelle fait référence à un élément précédent "
+            "('ce document', 'cette facture', 'celui-ci', 'et pour …'), résous d'abord "
+            "la référence à partir de cet historique (nom, montant, date, numéro mentionnés), "
+            "puis agis en conséquence.\n\n"
+        )
 
     messages.append({"role": "user", "content": (
-        f"Contexte de la collection:\n{stats}\n\nQuestion: {question}"
+        f"{convo}Contexte de la collection:\n{stats}\n\nQuestion: {question}"
     )})
 
     prev_actions: list[str] = []

@@ -181,7 +181,7 @@ export default function App() {
             let th = "";
             let an = "";
             api
-              .askAllStream(q, {
+              .askAllStream(q, globalQa.map((e) => ({ question: e.question, answer: e.answer })), {
                 onThinking: (d) => {
                   th += d;
                   setStreaming((s) => (s ? { ...s, thinking: th } : s));

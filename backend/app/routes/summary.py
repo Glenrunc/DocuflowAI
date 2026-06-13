@@ -13,6 +13,9 @@ from ..summary_calc import build_summary
 
 router = APIRouter(prefix="/api", tags=["summary"])
 
+HISTORY_MAX_TURNS = 6
+HISTORY_ANSWER_CHARS = 600
+
 
 @router.get("/summary")
 def summary(session: Session = Depends(get_session)):
@@ -25,12 +28,17 @@ def ask_all(body: QAIn, session: Session = Depends(get_session)):
     """Stream the agentic RAG Q&A as NDJSON: {type:thinking|tool|answer} chunks, then {type:done}."""
     docs = session.exec(select(Document).where(Document.status == "done")).all()
 
+    hist = [
+        (p.question, p.answer[:HISTORY_ANSWER_CHARS])
+        for p in (body.history or [])[-HISTORY_MAX_TURNS:]
+    ]
+
     def gen():
         if not docs:
             yield json.dumps({"type": "answer", "text": "No processed documents yet."}) + "\n"
             yield json.dumps({"type": "done", "citation": None}) + "\n"
             return
-        for part in stream_agent(session, body.question):
+        for part in stream_agent(session, body.question, history=hist):
             yield json.dumps(part, ensure_ascii=False) + "\n"
         yield json.dumps({"type": "done", "citation": f"Agent RAG — {len(docs)} documents"}) + "\n"
 

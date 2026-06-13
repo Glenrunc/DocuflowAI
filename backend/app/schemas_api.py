@@ -59,8 +59,14 @@ class ChangeTypeIn(BaseModel):
     type: str
 
 
+class QAPair(BaseModel):
+    question: str
+    answer: str
+
+
 class QAIn(BaseModel):
     question: str
+    history: list[QAPair] | None = None
 
 
 class DupResolveIn(BaseModel):
